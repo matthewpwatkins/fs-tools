@@ -42,7 +42,7 @@ export class FindAGraveMemorialPage implements Page {
     fsLink.setAttribute('id', 'memorial-tools-link');
     fsLink.classList.add('add-link');
     fsLink.classList.add('text-wrap');
-    fsLink.href = `https://www.familysearch.org/search/record/results?f.collectionId=2221801&q.externalRecordId=${memorialId}`;
+    fsLink.href = `https://www.familysearch.org/search/record/results?f.collectionId=2221801&q.externalRecordId=${memorialId}&click-first-result=true`;
     fsLink.target = '_blank';
     fsLink.title = 'View on FamilySearch';
 

@@ -1,9 +1,11 @@
 import { FamilySearchPage } from "./pages/familysearch-page";
 import { FamilySearchPersonDetailsPage } from "./pages/familysearch-person-details-page";
+import { FamilySearchSearchResultsPage } from "./pages/familysearch-search-results-page";
 import { FindAGraveMemorialPage } from "./pages/findagrave-memorial-page";
 
 const pages = [
   new FamilySearchPage(),
+  new FamilySearchSearchResultsPage(),
   new FamilySearchPersonDetailsPage(),
   new FindAGraveMemorialPage()
 ];
