@@ -27,12 +27,12 @@ export class FindAGraveMemorialPage implements Page {
     }
 
     console.log('Adding memorial tools link');
-    const fslink = this.createToolsLinkFrom();
+    const fslink = this.createFsLink();
     nameHeader.appendChild(fslink);
     this.fsLinkAdded = true;
   }
 
-  private createToolsLinkFrom(): HTMLAnchorElement {
+  private createFsLink(): HTMLAnchorElement {
     const fsIconImage = document.createElement('img');
     fsIconImage.src = FS_FAVICON_URL;
     fsIconImage.alt = 'View on FamilySearch';
