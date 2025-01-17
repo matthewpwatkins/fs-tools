@@ -6,8 +6,9 @@ This is my own personal project is not based off FamilySearch source code or ass
 
 ## Features
 
-- Adds a FamilySearch link button to memorials on FindAGrave.com
-- Adds a menu item to copy your FamilySearch session ID to the clipboard
+- A FamilySearch button on FindAGrave.com that links directly to the person's grave record in FamilySearch
+- A full-text search link on Film collections (you must [enable full-text search on your account](https://www.familysearch.org/en/labs/) to use this)
+- [For developers] Adds a menu item to copy your FamilySearch session ID to the clipboard
 
 ## Installation
 
