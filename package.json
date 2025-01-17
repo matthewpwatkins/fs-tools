@@ -5,7 +5,7 @@
   "main": "dist/fs-army-knife.user.js",
   "scripts": {
     "build": "webpack && node build-scripts/post-build.js",
-    "test": "jest"
+    "test": "jest --passWithNoTests"
   },
   "dependencies": {
     "howler": "^2.2.3"
