@@ -6,8 +6,9 @@ This is my own personal project is not based off FamilySearch source code or ass
 
 ## Features
 
-- A FamilySearch button on FindAGrave.com that links directly to the person's grave record in FamilySearch
+- A search link on the person detail to find other persons in the tree based on the person details
 - A full-text search link on Film collections (you must [enable full-text search on your account](https://www.familysearch.org/en/labs/) to use this)
+- A FamilySearch button on FindAGrave.com that links directly to the person's grave record in FamilySearch
 - [For developers] Adds a menu item to copy your FamilySearch session ID to the clipboard
 
 ## Installation

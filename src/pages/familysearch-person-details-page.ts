@@ -6,6 +6,7 @@ import { Page } from "../page";
  */
 export class FamilySearchPersonDetailsPage implements Page {
   private sourceLinkAdded: boolean = false;
+  private treeSearchLinkAdded: boolean = false;
 
   isMatch(url: URL): boolean {
     return url.hostname.toLowerCase().endsWith('.familysearch.org') && url.pathname.startsWith('/tree/person/details/');
@@ -16,10 +17,15 @@ export class FamilySearchPersonDetailsPage implements Page {
   }
 
   onPageChange(): void {
+    this.injectSourcesGridLink();
+    this.injectTreeSearchLink();
+  }
+
+  private injectSourcesGridLink(): void {
     if (this.sourceLinkAdded) {
       return;
     }
-    
+
     const mainTabs = document.querySelector('div[data-testid="main-tabs"]');
     if (!mainTabs) {
       return;
@@ -40,10 +46,39 @@ export class FamilySearchPersonDetailsPage implements Page {
     const pid = new URL(sourcesLink.href).pathname.split('/').pop();
     const sourcesGridLink = document.createElement('a');
     sourcesGridLink.setAttribute('id', 'sources-grid-link');
-    sourcesGridLink.textContent = '🧪 Sources Grid';
+    sourcesGridLink.textContent = 'Sources Grid';
     sourcesGridLink.href = `/match/tools/preview/?pid=${pid}`;
     sourcesGridLink.target = '_blank';
     sourcesLink.classList.forEach(className => sourcesGridLink.classList.add(className));
     return sourcesGridLink;
+  }
+
+  private injectTreeSearchLink(): void {
+    if (this.treeSearchLinkAdded) {
+      return;
+    }
+
+    const recordLinkLi = document.querySelector('li a[href*="/search/record/results"]')?.closest('li');
+    if (!recordLinkLi) {
+      return;
+    }
+
+    const recordLinkSpan = Array.from(recordLinkLi.querySelectorAll('a[href*="/search/record/results"] span'))
+      .find(span => span.textContent?.trim().length);
+    if (!recordLinkSpan) {
+      return;
+    }
+
+    recordLinkSpan.textContent = 'FamilySearch - Records';
+
+    const treeLinkLi = recordLinkLi.cloneNode(true) as HTMLLIElement;
+    const treeLink = treeLinkLi.querySelector('a[href*="/search/record/results"]') as HTMLAnchorElement;
+    treeLink.href = treeLink.href.replace('/search/record/', '/search/tree/');
+    const treeLinkSpan = Array.from(treeLink.querySelectorAll('span'))
+      .find(span => span.textContent?.trim().length)!;
+    treeLinkSpan.textContent = 'FamilySearch - Tree';
+
+    recordLinkLi.parentNode?.insertBefore(treeLinkLi, recordLinkLi);
+    this.treeSearchLinkAdded = true;
   }
 }
