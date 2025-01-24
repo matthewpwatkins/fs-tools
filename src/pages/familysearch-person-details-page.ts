@@ -9,14 +9,19 @@ export class FamilySearchPersonDetailsPage implements Page {
   private treeSearchLinkAdded: boolean = false;
 
   isMatch(url: URL): boolean {
-    return url.hostname.toLowerCase().endsWith('.familysearch.org') && url.pathname.startsWith('/tree/person/details/');
+    return url.hostname.toLowerCase().endsWith('.familysearch.org')
+      && url.pathname.startsWith('/tree/person/');
   }
 
-  onPageLoad(): void {
-    // No-op
+  onPageEnter(): void {
+    console.log('FamilySearchPersonDetailsPage - onPageEnter');
   }
 
-  onPageChange(): void {
+  onPageExit(): void {
+    console.log('FamilySearchPersonDetailsPage - onPageExit');
+  }
+
+  onPageContentUpdate(): void {
     this.injectSourcesGridLink();
     this.injectTreeSearchLink();
   }

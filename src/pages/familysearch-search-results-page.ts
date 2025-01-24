@@ -8,16 +8,20 @@ export class FamilySearchSearchResultsPage implements Page {
   private firstResultClicked: boolean = false;
 
   isMatch(url: URL): boolean {
-    return url.hostname.toLowerCase().endsWith('.familysearch.org') &&
-      url.pathname.startsWith('/search/record/results') &&
-      url.searchParams.get('click-first-result') === 'true';
+    return url.hostname.toLowerCase().endsWith('.familysearch.org')
+      && url.pathname.startsWith('/search/record/results')
+      && url.searchParams.get('click-first-result') === 'true';
   }
 
-  onPageLoad(): void {
-    // No-op
+  onPageEnter(): void {
+    console.log('FamilySearchSearchResultsPage - onPageEnter');
   }
 
-  onPageChange(): void {
+  onPageExit(): void {
+    console.log('FamilySearchSearchResultsPage - onPageExit');
+  }
+
+  onPageContentUpdate(): void {
     if (this.firstResultClicked) {
       return;
     }

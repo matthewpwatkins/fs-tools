@@ -10,7 +10,8 @@ export class FamilySearchPage implements Page {
     return url.hostname.toLowerCase().endsWith('.familysearch.org');
   }
 
-  onPageLoad(): void {
+  onPageEnter(): void {
+    console.log('FamilySearchPage - onPageEnter');
     GM_registerMenuCommand('Copy Session ID', () => {
       const sessionID = getFamilySearchSessionId();
       if (!sessionID) {
@@ -22,7 +23,11 @@ export class FamilySearchPage implements Page {
     }, { accessKey: 'c', autoClose: true });
   }
 
-  onPageChange(): void {
+  onPageExit(): void {
+    console.log('FamilySearchPage - onPageExit');
+  }
+
+  onPageContentUpdate(): void {
     // No-op
   }
 }

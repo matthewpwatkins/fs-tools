@@ -8,14 +8,19 @@ export class FamilySearchFilmPage implements Page {
   private static readonly SEARCH_LINK_ID = 'full-text-film-search-link';  
 
   isMatch(url: URL): boolean {
-    return url.hostname.toLowerCase().endsWith('.familysearch.org') && url.pathname.startsWith('/search/film/');
+    return url.hostname.toLowerCase().endsWith('.familysearch.org')
+      && url.pathname.startsWith('/search/film/');
   }
 
-  onPageLoad(): void {
-    // No-op
+  onPageEnter(): void {
+    console.log('FamilySearchFilmPage - onPageEnter');
   }
 
-  onPageChange(): void {
+  onPageExit(): void {
+    console.log('FamilySearchFilmPage - onPageExit');
+  }
+
+  onPageContentUpdate(): void {
     if (document.getElementById(FamilySearchFilmPage.SEARCH_LINK_ID)) {
       return;
     }

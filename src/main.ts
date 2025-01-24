@@ -1,10 +1,12 @@
+import { Page } from "./page";
 import { FamilySearchFilmPage } from "./pages/familysearch-film-page";
 import { FamilySearchPage } from "./pages/familysearch-page";
 import { FamilySearchPersonDetailsPage } from "./pages/familysearch-person-details-page";
 import { FamilySearchSearchResultsPage } from "./pages/familysearch-search-results-page";
 import { FindAGraveMemorialPage } from "./pages/findagrave-memorial-page";
 
-const pages = [
+console.log("FamilySearch Army Knife loaded");
+const ALL_PAGES: Page[] = [
   new FamilySearchPage(),
   new FamilySearchFilmPage(),
   new FamilySearchSearchResultsPage(),
@@ -12,15 +14,33 @@ const pages = [
   new FindAGraveMemorialPage()
 ];
 
-const url = new URL(window.location.href);
-const matchingPages = pages.filter(page => page.isMatch(url));
-if (matchingPages.length) {
-  matchingPages.forEach(page => page.onPageLoad());
-  new MutationObserver(() => {
-    matchingPages.forEach(page => page.onPageChange());
-  }).observe(document, {
-    childList: true,
-    subtree: true,
-  });
-  matchingPages.forEach(page => page.onPageChange());
+let currentURL: URL | undefined;
+const matchingPages: Set<Page> = new Set();
+
+function onPageChange() {
+  const url = new URL(window.location.href);
+  const urlChanged = url.href !== currentURL?.href;
+  if (urlChanged) {
+    for (const page of ALL_PAGES) {
+      if (page.isMatch(url)) {
+        if (!matchingPages.has(page)) {
+          page.onPageEnter();
+          matchingPages.add(page);
+        }
+      } else {
+        if (matchingPages.has(page)) {
+          page.onPageExit();
+          matchingPages.delete(page);
+        }
+      }
+    }
+  }
+  matchingPages.forEach(page => page.onPageContentUpdate());
 }
+
+new MutationObserver(onPageChange).observe(document, {
+  childList: true,
+  subtree: true,
+});
+
+onPageChange();

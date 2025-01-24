@@ -9,14 +9,19 @@ export class FindAGraveMemorialPage implements Page {
     private fsLinkAdded: boolean = false;
 
   isMatch(url: URL): boolean {
-    return url.hostname.toLowerCase().endsWith('.findagrave.com') && url.pathname.startsWith('/memorial/');
+    return url.hostname.toLowerCase().endsWith('.findagrave.com')
+      && url.pathname.startsWith('/memorial/');
   }
 
-  onPageLoad(): void {
-    // No-op
+  onPageEnter(): void {
+    console.log('FindAGraveMemorialPage - onPageEnter');
   }
 
-  onPageChange(): void {
+  onPageExit(): void {
+    console.log('FindAGraveMemorialPage - onPageExit');
+  }
+
+  onPageContentUpdate(): void {
     if (this.fsLinkAdded) {
       return;
     }
