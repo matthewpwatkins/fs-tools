@@ -4,13 +4,6 @@ This is a Tampermonkey/GreaseMonkey script that adds extra functionality to make
 
 This is my own personal project is not based off FamilySearch source code or associated with FamilySearch in any way.
 
-## Features
-
-- A search link on the person detail to find other persons in the tree based on the person details
-- A full-text search link on Film collections (you must [enable full-text search on your account](https://www.familysearch.org/en/labs/) to use this)
-- A FamilySearch button on FindAGrave.com that links directly to the person's grave record in FamilySearch
-- [For developers] Adds a menu item to copy your FamilySearch session ID to the clipboard
-
 ## Installation
 
 1. Install Tampermonkey or Greasemonkey in your browser if you haven't already.
@@ -18,13 +11,37 @@ This is my own personal project is not based off FamilySearch source code or ass
 
 That's it!
 
-## Upcoming features
+## Features
 
-- Full-text search links from record pages
+### Search for possible duplicates in the tree from the person view
+
+FamilySearch already allows you to easily search for records within FamilySearch from within the person view. I've also added a button to search the tree for duplication people from the person view.
+
+![Tree Search Button](./docs/img/tree-search-link.jpg)
+
+### Full-text search
+
+Full-text search is an amazing tool, allowing you to search for text within microfilm, books, and other previously unsearchable imagesin FamilySearch. You must [enable full-text search on your account](https://www.familysearch.org/en/labs/) to use this feature. When you're viewing a record match, you will see a link to open the full-text search for that person's name in that record, saving you the work of hunting through images manually.
+
+![Full-text search link](./docs/img/film-search-from-record-page.jpg)
+
+Or if you are already viewing a film or other record, you can access full-text search from the film details page:
+
+![Full-text search link](./docs/img/film-search.jpg)
+
+### Go to FamilySearch directly from FindAGrave
+
+If you're on FindAGrave memorial page, a button shows that directly links you to the corresponding FindAGrave record in FamilySearch, saving you the work of searching for the person manually.
+
+![FindAGrave link](./docs/img/findagrave-link.jpg)
+
+### Copy FamilySearch session ID
+
+This is for the developers. It adds a menu item to Tampermonkey to copy your FamilySearch session ID to the clipboard so you don't have to grab it out of your cookies yourself.
 
 ## Suggestions
 
-If you want to suggest new features, reach out to me at watkins.dev
+If you want to suggest new features, reach out to me at [watkins.dev](https://watkins.dev).
 
 ## Developing locally
 

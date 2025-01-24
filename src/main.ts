@@ -2,6 +2,7 @@ import { Page } from "./page";
 import { FamilySearchFilmPage } from "./pages/familysearch-film-page";
 import { FamilySearchPage } from "./pages/familysearch-page";
 import { FamilySearchPersonDetailsPage } from "./pages/familysearch-person-details-page";
+import { FamilySearchRecordPage } from "./pages/familysearch-record-page";
 import { FamilySearchSearchResultsPage } from "./pages/familysearch-search-results-page";
 import { FindAGraveMemorialPage } from "./pages/findagrave-memorial-page";
 
@@ -9,8 +10,9 @@ console.log("FamilySearch Army Knife loaded");
 const ALL_PAGES: Page[] = [
   new FamilySearchPage(),
   new FamilySearchFilmPage(),
-  new FamilySearchSearchResultsPage(),
   new FamilySearchPersonDetailsPage(),
+  new FamilySearchRecordPage(),
+  new FamilySearchSearchResultsPage(),  
   new FindAGraveMemorialPage()
 ];
 
