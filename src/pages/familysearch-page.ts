@@ -7,7 +7,7 @@ import { getFamilySearchSessionId } from "../util/cookie-utils";
  */
 export class FamilySearchPage implements Page {
   isMatch(url: URL): boolean {
-    return url.hostname.toLowerCase().endsWith('.familysearch.org');
+    return url.hostname.toLowerCase().endsWith('familysearch.org');
   }
 
   onPageEnter(): void {

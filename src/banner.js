@@ -7,8 +7,9 @@
 // @updateURL    {{install_url}}
 // @author       {{author}}
 // @icon         https://edge.fscdn.org/assets/docs/fs_logo_favicon_sq.png
-// @match        https://www.familysearch.org/*
-// @match        https://www.findagrave.com/*
+// @match        https://*.familysearch.org/*
+// @match        https://*.findagrave.com/*
+// @match        https://*.billiongraves.com/*
 // @run-at       document-start
 // @grant        GM_registerMenuCommand
 // @grant        GM_setClipboard

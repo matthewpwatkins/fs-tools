@@ -2,7 +2,7 @@ import { Page } from "../page";
 
 export class FamilySearchRecordPage implements Page {
   isMatch(url: URL): boolean {
-    return url.hostname.toLowerCase().endsWith('.familysearch.org')
+    return url.hostname.toLowerCase().endsWith('familysearch.org')
       && url.pathname.startsWith('/ark:/61903/1:1')
   }
 

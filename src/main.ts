@@ -1,4 +1,5 @@
 import { Page } from "./page";
+import { BillionGravesGravePage } from "./pages/billiongraves-grave-page";
 import { FamilySearchFilmPage } from "./pages/familysearch-film-page";
 import { FamilySearchPage } from "./pages/familysearch-page";
 import { FamilySearchPersonDetailsPage } from "./pages/familysearch-person-details-page";
@@ -8,6 +9,7 @@ import { FindAGraveMemorialPage } from "./pages/findagrave-memorial-page";
 
 console.log("FamilySearch Army Knife loaded");
 const ALL_PAGES: Page[] = [
+  // new BillionGravesGravePage(),
   new FamilySearchPage(),
   new FamilySearchFilmPage(),
   new FamilySearchPersonDetailsPage(),

@@ -6,10 +6,12 @@ import { Page } from "../page";
  * Adds a FamilySearch link to the page.
  */
 export class FindAGraveMemorialPage implements Page {
-    private fsLinkAdded: boolean = false;
+  private static readonly FINDAGRAVE_COLLECTION_ID = '2221801';
+  
+  private fsLinkAdded: boolean = false;
 
   isMatch(url: URL): boolean {
-    return url.hostname.toLowerCase().endsWith('.findagrave.com')
+    return url.hostname.toLowerCase().endsWith('findagrave.com')
       && url.pathname.startsWith('/memorial/');
   }
 
@@ -44,10 +46,10 @@ export class FindAGraveMemorialPage implements Page {
     
     const memorialId = document.location.pathname.split('/')[2];
     const fsLink = document.createElement('a');
-    fsLink.setAttribute('id', 'memorial-tools-link');
+    fsLink.setAttribute('id', 'fs-tools-link');
     fsLink.classList.add('add-link');
     fsLink.classList.add('text-wrap');
-    fsLink.href = `https://www.familysearch.org/search/record/results?f.collectionId=2221801&q.externalRecordId=${memorialId}&click-first-result=true`;
+    fsLink.href = `https://www.familysearch.org/search/record/results?f.collectionId=${FindAGraveMemorialPage.FINDAGRAVE_COLLECTION_ID}&q.externalRecordId=${memorialId}&click-first-result=true`;
     fsLink.target = '_blank';
     fsLink.title = 'View on FamilySearch';
 

@@ -8,7 +8,7 @@ export class FamilySearchFilmPage implements Page {
   private static readonly SEARCH_LINK_ID = 'full-text-film-search-link';  
 
   isMatch(url: URL): boolean {
-    return url.hostname.toLowerCase().endsWith('.familysearch.org')
+    return url.hostname.toLowerCase().endsWith('familysearch.org')
       && url.pathname.startsWith('/search/film/');
   }
 

@@ -8,7 +8,7 @@ export class FamilySearchSearchResultsPage implements Page {
   private firstResultClicked: boolean = false;
 
   isMatch(url: URL): boolean {
-    return url.hostname.toLowerCase().endsWith('.familysearch.org')
+    return url.hostname.toLowerCase().endsWith('familysearch.org')
       && url.pathname.startsWith('/search/record/results')
       && url.searchParams.get('click-first-result') === 'true';
   }

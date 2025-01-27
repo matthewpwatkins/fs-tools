@@ -9,7 +9,7 @@ export class FamilySearchPersonDetailsPage implements Page {
   private treeSearchLinkAdded: boolean = false;
 
   isMatch(url: URL): boolean {
-    return url.hostname.toLowerCase().endsWith('.familysearch.org')
+    return url.hostname.toLowerCase().endsWith('familysearch.org')
       && url.pathname.startsWith('/tree/person/');
   }
 
