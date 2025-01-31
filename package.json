@@ -3,7 +3,7 @@
   "monkeyScript": {
     "displayName": "FamilySearch Army Knife"
   },
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "A collection of useful utilities for working within FamilySearch. Not affiliated with FamilySearch.",
   "main": "dist/fs-army-knife.user.js",
   "scripts": {
