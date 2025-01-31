@@ -6,6 +6,7 @@ import { FamilySearchPersonDetailsPage } from "./pages/familysearch-person-detai
 import { FamilySearchRecordPage } from "./pages/familysearch-record-page";
 import { FamilySearchSearchResultsPage } from "./pages/familysearch-search-results-page";
 import { FindAGraveMemorialPage } from "./pages/findagrave-memorial-page";
+import { FindAGravePage } from "./pages/findagrave-page";
 
 console.log("FamilySearch Army Knife loaded");
 const ALL_PAGES: Page[] = [
@@ -15,7 +16,8 @@ const ALL_PAGES: Page[] = [
   new FamilySearchPersonDetailsPage(),
   new FamilySearchRecordPage(),
   new FamilySearchSearchResultsPage(),  
-  new FindAGraveMemorialPage()
+  new FindAGraveMemorialPage(),
+  new FindAGravePage()
 ];
 
 let currentURL: URL | undefined;
