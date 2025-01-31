@@ -13,4 +13,6 @@
 // @run-at       document-start
 // @grant        GM_registerMenuCommand
 // @grant        GM_setClipboard
+// @grant        GM_xmlhttpRequest
+// @connect      familysearch.org
 // ==/UserScript==
