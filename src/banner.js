@@ -11,6 +11,8 @@
 // @match        https://*.findagrave.com/*
 // @match        https://*.billiongraves.com/*
 // @run-at       document-start
+// @grant        GM_getValue
+// @grant        GM_setValue
 // @grant        GM_registerMenuCommand
 // @grant        GM_setClipboard
 // @grant        GM_xmlhttpRequest

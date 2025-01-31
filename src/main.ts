@@ -1,3 +1,4 @@
+import { FsApiClient } from "./fs-api/fs-api-client";
 import { Page } from "./page";
 import { BillionGravesGravePage } from "./pages/billiongraves-grave-page";
 import { FamilySearchFilmPage } from "./pages/familysearch-film-page";
@@ -8,45 +9,50 @@ import { FamilySearchSearchResultsPage } from "./pages/familysearch-search-resul
 import { FindAGraveMemorialPage } from "./pages/findagrave-memorial-page";
 import { FindAGravePage } from "./pages/findagrave-page";
 
-console.log("FamilySearch Army Knife loaded");
-const ALL_PAGES: Page[] = [
-  // new BillionGravesGravePage(),
-  new FamilySearchPage(),
-  new FamilySearchFilmPage(),
-  new FamilySearchPersonDetailsPage(),
-  new FamilySearchRecordPage(),
-  new FamilySearchSearchResultsPage(),  
-  new FindAGraveMemorialPage(),
-  new FindAGravePage()
-];
-
-let currentURL: URL | undefined;
-const matchingPages: Set<Page> = new Set();
-
-function onPageChange() {
-  const url = new URL(window.location.href);
-  const urlChanged = url.href !== currentURL?.href;
-  if (urlChanged) {
-    for (const page of ALL_PAGES) {
-      if (page.isMatch(url)) {
-        if (!matchingPages.has(page)) {
-          page.onPageEnter();
-          matchingPages.add(page);
-        }
-      } else {
-        if (matchingPages.has(page)) {
-          page.onPageExit();
-          matchingPages.delete(page);
+async function main() {
+  const fsApiClient = await FsApiClient.load();
+  const ALL_PAGES: Page[] = [
+    // new BillionGravesGravePage(),
+    new FamilySearchPage(),
+    new FamilySearchFilmPage(),
+    new FamilySearchPersonDetailsPage(),
+    new FamilySearchRecordPage(),
+    new FamilySearchSearchResultsPage(),  
+    new FindAGraveMemorialPage(fsApiClient),
+    new FindAGravePage(fsApiClient)
+  ];
+  
+  let currentURL: URL | undefined;
+  const matchingPages: Set<Page> = new Set();
+  
+  // TODO: Better handling of awaits so pages don't interfere with each other
+  async function onPageChange() {
+    const url = new URL(window.location.href);
+    const urlChanged = url.href !== currentURL?.href;
+    if (urlChanged) {
+      for (const page of ALL_PAGES) {
+        if (await page.isMatch(url)) {
+          if (!matchingPages.has(page)) {
+            await page.onPageEnter();
+            matchingPages.add(page);
+          }
+        } else {
+          if (matchingPages.has(page)) {
+            await page.onPageExit();
+            matchingPages.delete(page);
+          }
         }
       }
     }
+    matchingPages.forEach(async page => await page.onPageContentUpdate());
   }
-  matchingPages.forEach(page => page.onPageContentUpdate());
+  
+  new MutationObserver(onPageChange).observe(document, {
+    childList: true,
+    subtree: true,
+  });
+  
+  await onPageChange();
 }
 
-new MutationObserver(onPageChange).observe(document, {
-  childList: true,
-  subtree: true,
-});
-
-onPageChange();
+main();

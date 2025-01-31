@@ -9,20 +9,20 @@ export class BillionGravesGravePage implements Page {
   
   private fsLinkAdded: boolean = false;
 
-  isMatch(url: URL): boolean {
+  async isMatch(url: URL): Promise<boolean> {
     return url.hostname.toLowerCase().endsWith('billiongraves.com')
       && url.pathname.startsWith('/grave/');
   }
 
-  onPageEnter(): void {
+  async onPageEnter(): Promise<void> {
     console.log('BillionGravesGravePage - onPageEnter');
   }
 
-  onPageExit(): void {
+  async onPageExit(): Promise<void> {
     console.log('BillionGravesGravePage - onPageExit');
   }
 
-  onPageContentUpdate(): void {
+  async onPageContentUpdate(): Promise<void> {
     if (this.fsLinkAdded) {
       return;
     }

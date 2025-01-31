@@ -8,20 +8,20 @@ export class FamilySearchPersonDetailsPage implements Page {
   private sourceLinkAdded: boolean = false;
   private treeSearchLinkAdded: boolean = false;
 
-  isMatch(url: URL): boolean {
+  async isMatch(url: URL): Promise<boolean> {
     return url.hostname.toLowerCase().endsWith('familysearch.org')
       && url.pathname.startsWith('/tree/person/');
   }
 
-  onPageEnter(): void {
+  async onPageEnter(): Promise<void> {
     console.log('FamilySearchPersonDetailsPage - onPageEnter');
   }
 
-  onPageExit(): void {
+  async onPageExit(): Promise<void> {
     console.log('FamilySearchPersonDetailsPage - onPageExit');
   }
 
-  onPageContentUpdate(): void {
+  async onPageContentUpdate(): Promise<void> {
     this.injectSourcesGridLink();
     this.injectTreeSearchLink();
   }

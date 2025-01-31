@@ -1,26 +1,34 @@
-import { FS_FAVICON_URL } from "../constants";
+import { FsApiClient } from "../fs-api/fs-api-client";
 import { Page } from "../page";
+import { createFsLink, updateFsLink } from "../util/findagrave-utils";
 
 /**
  * Runs on all Find A Grave pages.
  * Adds a FamilySearch link to the page.
  */
 export class FindAGravePage implements Page {
-  private static readonly FINDAGRAVE_COLLECTION_ID = '2221801';
+  private fsApiClient: FsApiClient;
 
-  isMatch(url: URL): boolean {
+  constructor(fsApiClient: FsApiClient) {
+    this.fsApiClient = fsApiClient;
+  }
+
+  async isMatch(url: URL): Promise<boolean> {
     return url.hostname.toLowerCase().endsWith('findagrave.com');
   }
 
-  onPageEnter(): void {
+  async onPageEnter(): Promise<void> {
     console.log('FindAGravePage - onPageEnter');
   }
 
-  onPageExit(): void {
+  async onPageExit(): Promise<void> {
     console.log('FindAGravePage - onPageExit');
   }
 
-  onPageContentUpdate(): void {
+  async onPageContentUpdate(): Promise<void> {
+    const linksAdded = [];
+    
+    // Set the initial links
     for (const grave of document.querySelectorAll('.memorial-item---grave')) {
       const nameElement = grave.querySelector('.pe-2');
       if (!nameElement) {
@@ -45,26 +53,14 @@ export class FindAGravePage implements Page {
       }
 
       console.log(`Adding FS link for memorial ${memorialId}`);
-      const fsLink = this.createFsLink(memorialId);
+      const fsLink = createFsLink(memorialId);
       nameElement.parentElement!.insertBefore(fsLink, nameElement.nextSibling);
+      linksAdded.push(fsLink);
     }
-  }
 
-  private createFsLink(memorialId: string): HTMLAnchorElement {
-    const fsIconImage = document.createElement('img');
-    fsIconImage.src = FS_FAVICON_URL;
-    fsIconImage.alt = 'View on FamilySearch';
-    
-    const fsLink = document.createElement('a');
-    fsLink.classList.add('fs-search-link');
-    fsLink.classList.add('add-link');
-    fsLink.classList.add('text-wrap');
-    fsLink.href = `https://www.familysearch.org/search/record/results?f.collectionId=${FindAGravePage.FINDAGRAVE_COLLECTION_ID}&q.externalRecordId=${memorialId}&click-first-result=true`;
-    fsLink.target = '_blank';
-    fsLink.title = 'View on FamilySearch';
-
-    fsLink.appendChild(fsIconImage);
-
-    return fsLink;
-  }
+    // Update to point directly after they've been added
+    for (const fsLink of linksAdded) {
+      await updateFsLink(fsLink, this.fsApiClient);
+    }
+  }  
 }

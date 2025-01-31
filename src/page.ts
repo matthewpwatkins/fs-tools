@@ -1,6 +1,6 @@
 export interface Page {
-  isMatch(url: URL): boolean;
-  onPageEnter(): void;
-  onPageExit(): void;
-  onPageContentUpdate(): void;
+  isMatch(url: URL): Promise<boolean>;
+  onPageEnter(): Promise<void>;
+  onPageExit(): Promise<void>;
+  onPageContentUpdate(): Promise<void>;
 }

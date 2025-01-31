@@ -7,21 +7,21 @@ import { Page } from "../page";
 export class FamilySearchSearchResultsPage implements Page {
   private firstResultClicked: boolean = false;
 
-  isMatch(url: URL): boolean {
+  async isMatch(url: URL): Promise<boolean> {
     return url.hostname.toLowerCase().endsWith('familysearch.org')
       && url.pathname.startsWith('/search/record/results')
       && url.searchParams.get('click-first-result') === 'true';
   }
 
-  onPageEnter(): void {
+  async onPageEnter(): Promise<void> {
     console.log('FamilySearchSearchResultsPage - onPageEnter');
   }
 
-  onPageExit(): void {
+  async onPageExit(): Promise<void> {
     console.log('FamilySearchSearchResultsPage - onPageExit');
   }
 
-  onPageContentUpdate(): void {
+  async onPageContentUpdate(): Promise<void> {
     if (this.firstResultClicked) {
       return;
     }

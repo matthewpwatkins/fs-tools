@@ -7,20 +7,20 @@ import { Page } from "../page";
 export class FamilySearchFilmPage implements Page {
   private static readonly SEARCH_LINK_ID = 'full-text-film-search-link';  
 
-  isMatch(url: URL): boolean {
+  async isMatch(url: URL): Promise<boolean> {
     return url.hostname.toLowerCase().endsWith('familysearch.org')
       && url.pathname.startsWith('/search/film/');
   }
 
-  onPageEnter(): void {
+  async onPageEnter(): Promise<void> {
     console.log('FamilySearchFilmPage - onPageEnter');
   }
 
-  onPageExit(): void {
+  async onPageExit(): Promise<void> {
     console.log('FamilySearchFilmPage - onPageExit');
   }
 
-  onPageContentUpdate(): void {
+  async onPageContentUpdate(): Promise<void> {
     if (document.getElementById(FamilySearchFilmPage.SEARCH_LINK_ID)) {
       return;
     }

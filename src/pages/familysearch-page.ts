@@ -6,11 +6,13 @@ import { getFamilySearchSessionId } from "../util/cookie-utils";
  * Adds a menu command to copy the session ID.
  */
 export class FamilySearchPage implements Page {
-  isMatch(url: URL): boolean {
+  private sessionId?: string;
+  
+  async isMatch(url: URL): Promise<boolean> {
     return url.hostname.toLowerCase().endsWith('familysearch.org');
   }
 
-  onPageEnter(): void {
+  async onPageEnter(): Promise<void> {
     console.log('FamilySearchPage - onPageEnter');
     GM_registerMenuCommand('Copy Session ID', async () => {
       const sessionID = getFamilySearchSessionId();
@@ -23,11 +25,14 @@ export class FamilySearchPage implements Page {
     }, { accessKey: 'c', autoClose: true });
   }
 
-  onPageExit(): void {
+  async onPageExit(): Promise<void> {
     console.log('FamilySearchPage - onPageExit');
   }
 
-  onPageContentUpdate(): void {
-    // No-op
+  async onPageContentUpdate(): Promise<void> {
+    if (!this.sessionId) {
+      this.sessionId = getFamilySearchSessionId();
+      await GM.setValue('fs-session-id', this.sessionId);
+    }
   }
 }

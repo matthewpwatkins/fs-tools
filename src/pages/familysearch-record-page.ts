@@ -1,20 +1,20 @@
 import { Page } from "../page";
 
 export class FamilySearchRecordPage implements Page {
-  isMatch(url: URL): boolean {
+  async isMatch(url: URL): Promise<boolean> {
     return url.hostname.toLowerCase().endsWith('familysearch.org')
       && url.pathname.startsWith('/ark:/61903/1:1')
   }
 
-  onPageEnter(): void {
+  async onPageEnter(): Promise<void> {
     console.log('FamilySearchRecordPage - onPageEnter');
   }
 
-  onPageExit(): void {
+  async onPageExit(): Promise<void> {
     console.log('FamilySearchRecordPage - onPageExit');
   }
 
-  onPageContentUpdate(): void {
+  async onPageContentUpdate(): Promise<void> {
     let searchButton = document.getElementById('btn-search-film');
     if (searchButton) { 
       return;
