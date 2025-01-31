@@ -4,7 +4,7 @@ import { createFsLink, updateFsLink } from "../util/findagrave-utils";
 
 /**
  * Runs on all Find A Grave pages.
- * Adds a FamilySearch link to the page.
+ * Adds a FamilySearch link to any memorial search results on the page
  */
 export class FindAGravePage implements Page {
   private fsApiClient: FsApiClient;
@@ -29,8 +29,8 @@ export class FindAGravePage implements Page {
     const linksAdded = [];
     
     // Set the initial links
-    for (const grave of document.querySelectorAll('.memorial-item---grave')) {
-      const nameElement = grave.querySelector('.pe-2');
+    for (const grave of document.querySelectorAll('.memorial-item---grave, .member-item[data-href^="/memorial/"]')) {
+      const nameElement = grave.querySelector('.pe-2, h3[itemprop="name"]');
       if (!nameElement) {
         continue;
       }
@@ -54,7 +54,7 @@ export class FindAGravePage implements Page {
 
       console.log(`Adding FS link for memorial ${memorialId}`);
       const fsLink = createFsLink(memorialId);
-      nameElement.parentElement!.insertBefore(fsLink, nameElement.nextSibling);
+      nameElement.appendChild(fsLink);
       linksAdded.push(fsLink);
     }
 
