@@ -12,13 +12,13 @@ export class FamilySearchPage implements Page {
 
   onPageEnter(): void {
     console.log('FamilySearchPage - onPageEnter');
-    GM_registerMenuCommand('Copy Session ID', () => {
+    GM_registerMenuCommand('Copy Session ID', async () => {
       const sessionID = getFamilySearchSessionId();
       if (!sessionID) {
         alert('Session ID not found');
         return;
       }
-      GM_setClipboard(sessionID);
+      await GM.setClipboard(sessionID);
       alert('Session ID copied to clipboard');
     }, { accessKey: 'c', autoClose: true });
   }
