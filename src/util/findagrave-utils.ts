@@ -21,11 +21,18 @@ export function createFsLink(memorialId: string): HTMLAnchorElement {
 }
 
 export async function updateFsLink(fsLink: HTMLAnchorElement, fsApiClient: FsApiClient): Promise<void> {
-  const searchRecordsResponse = await fsApiClient.searchRecords(new URLSearchParams({
-    'q.externalRecordId': fsLink.dataset.memorialId!,
-    'f.collectionId': FINDAGRAVE_COLLECTION_ID
-  }));
-  if (searchRecordsResponse.entries.length === 1) {
-    fsLink.href = `https://www.familysearch.org/ark:/61903/1:1:${searchRecordsResponse.entries[0].id}`;
+  const memorialId = fsLink.dataset.memorialId!;
+  const localStorageKey = `${memorialId}.fsId`;
+  let fsId = localStorage.getItem(localStorageKey);
+  if (!fsId) {
+    const searchRecordsResponse = await fsApiClient.searchRecords(new URLSearchParams({
+      'q.externalRecordId': fsLink.dataset.memorialId!,
+      'f.collectionId': FINDAGRAVE_COLLECTION_ID
+    }));
+    fsId = searchRecordsResponse.entries.length === 1 ? searchRecordsResponse.entries[0].id : 'NONE';
+    localStorage.setItem(localStorageKey, fsId);
   }
+  if (fsId !== 'NONE') {
+    fsLink.href = `https://www.familysearch.org/ark:/61903/1:1:${fsId}`;
+  }  
 }
