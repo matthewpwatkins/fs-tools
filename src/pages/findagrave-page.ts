@@ -6,6 +6,9 @@ import { createFsLink, updateFsLink } from "../util/findagrave-utils";
  * Runs on all Find A Grave pages.
  * Adds a FamilySearch link to any memorial search results on the page
  */
+
+// TODO: Limit and rate limit requests to updateFsLink
+
 export class FindAGravePage implements Page {
   private fsApiClient: FsApiClient;
 

@@ -10,7 +10,7 @@ export class FamilySearchPersonDetailsPage implements Page {
 
   async isMatch(url: URL): Promise<boolean> {
     return url.hostname.toLowerCase().endsWith('familysearch.org')
-      && url.pathname.startsWith('/tree/person/');
+      && url.pathname.indexOf('/tree/person/') >= 0;
   }
 
   async onPageEnter(): Promise<void> {

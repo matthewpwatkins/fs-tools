@@ -9,7 +9,7 @@ export class FamilySearchSearchResultsPage implements Page {
 
   async isMatch(url: URL): Promise<boolean> {
     return url.hostname.toLowerCase().endsWith('familysearch.org')
-      && url.pathname.startsWith('/search/record/results')
+      && url.pathname.indexOf('/search/record/results') >= 0
       && url.searchParams.get('click-first-result') === 'true';
   }
 

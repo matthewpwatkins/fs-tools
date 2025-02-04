@@ -3,7 +3,7 @@ import { Page } from "../page";
 export class FamilySearchRecordPage implements Page {
   async isMatch(url: URL): Promise<boolean> {
     return url.hostname.toLowerCase().endsWith('familysearch.org')
-      && url.pathname.startsWith('/ark:/61903/1:1')
+      && url.pathname.indexOf('/ark:/61903/1:1') >= 0;
   }
 
   async onPageEnter(): Promise<void> {
@@ -36,7 +36,7 @@ export class FamilySearchRecordPage implements Page {
       return;
     }
 
-    const filmNumber = document.querySelector('a[href^="/search/record/results?q.filmNumber"]')?.textContent;
+    const filmNumber = document.querySelector('a[href*="/search/record/results?q.filmNumber"]')?.textContent;
     if (!filmNumber) {
       return;
     }

@@ -4,12 +4,15 @@ import { Page } from "../page";
  * Runs on all film detail pages.
  * Adds a search link to the page.
  */
+
+// TODO: Add a search bar instead of just a link
+
 export class FamilySearchFilmPage implements Page {
   private static readonly SEARCH_LINK_ID = 'full-text-film-search-link';  
 
   async isMatch(url: URL): Promise<boolean> {
     return url.hostname.toLowerCase().endsWith('familysearch.org')
-      && url.pathname.startsWith('/search/film/');
+      && url.pathname.indexOf('/search/film/') >= 0;
   }
 
   async onPageEnter(): Promise<void> {
@@ -38,7 +41,7 @@ export class FamilySearchFilmPage implements Page {
       return;
     }
 
-    const filmNumber = new URL(window.location.href).pathname.split('/')[3];
+    const filmNumber = new URL(window.location.href).pathname.split('/').pop();
     if (!filmNumber) {
       return;
     }
