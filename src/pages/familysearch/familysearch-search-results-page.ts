@@ -1,4 +1,4 @@
-import { Page } from "../page";
+import { Page } from "../../page";
 
 /**
  * Runs on FamilySearch search results pages.
@@ -21,7 +21,7 @@ export class FamilySearchSearchResultsPage implements Page {
     console.log('FamilySearchSearchResultsPage - onPageExit');
   }
 
-  async onPageContentUpdate(): Promise<void> {
+  async onPageContentUpdate(updateID: string): Promise<void> {
     if (this.firstResultClicked) {
       return;
     }

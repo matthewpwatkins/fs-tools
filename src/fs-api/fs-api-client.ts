@@ -1,7 +1,7 @@
 import { FsSessionIdStorage } from "./fs-session-id-storage";
-import { TampermonkeyFsSessionIdStorage } from "./tampermonkey-fs-session-id-storage";
 import { TokenResponse } from "./models/token-response";
 import { SearchRecordsResponse } from "./models/search-records-response";
+import { SourceAttachment } from "./models/source-attachment";
 
 export class FsApiClient {
   private static readonly BASE_URL = 'https://www.familysearch.org';
@@ -16,15 +16,17 @@ export class FsApiClient {
     this.sessionIdStorage = fsSessionIdStorage;
   }
 
-  public static async load(): Promise<FsApiClient> {
-    return new FsApiClient(new TampermonkeyFsSessionIdStorage());
-  }
-
   public async auth(forceNewToken: boolean): Promise<void> {
-    if (!forceNewToken && this.sessionIdStorage) {
-      return;
+    if (!forceNewToken) {
+      if (!this.sessionId) {
+        this.sessionId = await this.sessionIdStorage.getSessionId();
+      }
+      if (this.sessionId) {
+        return;
+      }
     }
 
+    console.log('No session ID found. Getting a new anonymous session ID from FamilySearch');
     const res: TokenResponse = await this.postForm(false, '/service/ident/cis/cis-web/oauth2/v3/token', new URLSearchParams(), new URLSearchParams({
       'grant_type': 'unauthenticated_session',
       'ip_address': FsApiClient.IP_ADDRESS,
@@ -37,6 +39,12 @@ export class FsApiClient {
 
   public async searchRecords(searchParams: URLSearchParams): Promise<SearchRecordsResponse> {
     return this.get(true, '/service/search/hr/v2/personas', searchParams);
+  }
+
+  public async getAttachmentsForRecord(recordId: string): Promise<SourceAttachment[]> {
+    return this.get(true, '/service/tree/links/sources/attachments', new URLSearchParams({
+      'uri': `https://www.familysearch.org/ark:/61903/1:1:${recordId}`
+    }));
   }
 
   // #region Private helpers
@@ -73,9 +81,7 @@ export class FsApiClient {
     };
 
     if (requireAuth) {
-      if (!this.sessionId) {
-        await this.auth(true);
-      }
+      await this.auth(false);
       baseHeaders['Authorization'] = `Bearer ${this.sessionId!}`;
     }
     
@@ -96,7 +102,7 @@ export class FsApiClient {
           if (response.status >= 200 && response.status < 300) {
             resolve(JSON.parse(response.responseText));
           } else {
-            reject(new Error(`${options.method} request to ${url} failed onload with status ${response.status}`));
+            reject(new Error(`${options.method} request to ${url} failed with status ${response.status}`));
           }
         },
         onerror: (error) => {

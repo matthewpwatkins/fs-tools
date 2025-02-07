@@ -9,6 +9,6 @@ export function getCookie(name: string): string | undefined {
   return undefined;
 }
 
-export function getFamilySearchSessionId(): string | undefined {
+export function getFamilySearchSessionIdFromCookie(): string | undefined {
   return getCookie('fssessionid');
 }

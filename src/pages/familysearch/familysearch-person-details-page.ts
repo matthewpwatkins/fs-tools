@@ -1,4 +1,4 @@
-import { Page } from "../page";
+import { Page } from "../../page";
 
 /**
  * Runs on all person detail pages.
@@ -21,7 +21,7 @@ export class FamilySearchPersonDetailsPage implements Page {
     console.log('FamilySearchPersonDetailsPage - onPageExit');
   }
 
-  async onPageContentUpdate(): Promise<void> {
+  async onPageContentUpdate(updateID: string): Promise<void> {
     this.injectSourcesGridLink();
     this.injectTreeSearchLink();
   }

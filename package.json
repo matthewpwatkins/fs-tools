@@ -11,7 +11,8 @@
     "test": "jest --passWithNoTests"
   },
   "dependencies": {
-    "howler": "^2.2.3"
+    "howler": "^2.2.3",
+    "uuid": "^11.0.5"
   },
   "devDependencies": {
     "@types/howler": "^2.2.12",

@@ -1,5 +1,5 @@
-import { FS_FAVICON_URL } from "../constants";
-import { Page } from "../page";
+import { FS_FAVICON_URL } from "../../constants";
+import { Page } from "../../page";
 
 /**
  * Runs on all BillionGraves grave pages.
@@ -22,7 +22,7 @@ export class BillionGravesGravePage implements Page {
     console.log('BillionGravesGravePage - onPageExit');
   }
 
-  async onPageContentUpdate(): Promise<void> {
+  async onPageContentUpdate(updateID: string): Promise<void> {
     if (this.fsLinkAdded) {
       return;
     }

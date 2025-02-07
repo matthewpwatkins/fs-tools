@@ -1,4 +1,4 @@
-import { Page } from "../page";
+import { Page } from "../../page";
 
 /**
  * Runs on all film detail pages.
@@ -23,7 +23,7 @@ export class FamilySearchFilmPage implements Page {
     console.log('FamilySearchFilmPage - onPageExit');
   }
 
-  async onPageContentUpdate(): Promise<void> {
+  async onPageContentUpdate(updateID: string): Promise<void> {
     if (document.getElementById(FamilySearchFilmPage.SEARCH_LINK_ID)) {
       return;
     }

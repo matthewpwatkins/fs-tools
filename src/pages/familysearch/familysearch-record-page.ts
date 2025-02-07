@@ -1,4 +1,4 @@
-import { Page } from "../page";
+import { Page } from "../../page";
 
 export class FamilySearchRecordPage implements Page {
   async isMatch(url: URL): Promise<boolean> {
@@ -14,7 +14,7 @@ export class FamilySearchRecordPage implements Page {
     console.log('FamilySearchRecordPage - onPageExit');
   }
 
-  async onPageContentUpdate(): Promise<void> {
+  async onPageContentUpdate(updateID: string): Promise<void> {
     let searchButton = document.getElementById('btn-search-film');
     if (searchButton) { 
       return;
