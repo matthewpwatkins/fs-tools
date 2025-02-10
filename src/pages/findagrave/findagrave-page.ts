@@ -167,7 +167,7 @@ export class FindAGravePage implements Page {
     }
 
     // Update the record link
-    fsRecordLink.href = memorialElementData.fsRecordId && memorialElementData.fsPersonId !== FindAGravePage.FS_ID_NONE
+    fsRecordLink.href = memorialElementData.fsRecordId && memorialElementData.fsRecordId !== FindAGravePage.FS_ID_NONE
       ? `https://www.familysearch.org/ark:/61903/1:1:${memorialElementData.fsRecordId}`
       : `https://www.familysearch.org/search/record/results?f.collectionId=${FINDAGRAVE_COLLECTION_ID}&q.externalRecordId=${memorialElementData.memorialId}&click-first-result=true`;
     
