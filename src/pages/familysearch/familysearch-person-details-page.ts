@@ -36,7 +36,7 @@ export class FamilySearchPersonDetailsPage implements Page {
       return;
     }
 
-    const sourcesLink = mainTabs.querySelector('a[href^="/tree/person/sources/"]');
+    const sourcesLink = mainTabs.querySelector('a[href*="/tree/person/sources/"]');
     if (!sourcesLink) {
       return;
     }
