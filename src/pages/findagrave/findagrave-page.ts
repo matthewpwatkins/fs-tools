@@ -132,7 +132,7 @@ export class FindAGravePage implements Page {
       fsMainLink.appendChild(fsIcon);
       fsLinkGroup.appendChild(fsMainLink);
 
-      const textElement = memorialElement.querySelector('h1, h2, h3, h4, h5, h6, i, p');
+      const textElement = memorialElement.querySelector('h1, h2, h3, h4, h5, h6, p');
       if (textElement) {
         textElement.insertAdjacentElement('afterend', fsLinkGroup);
       } else {
