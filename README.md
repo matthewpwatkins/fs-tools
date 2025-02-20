@@ -19,6 +19,12 @@ FamilySearch already allows you to easily search for records within FamilySearch
 
 ![Tree Search Button](./docs/img/tree-search-link.jpg)
 
+### Search the tree and other records from a record page
+
+When you're viewing a record, you can search the tree for the person in the record, or search for other records for this person without manually typing in all the informatino yourself.
+
+![Record search buttons](./docs/img/search-buttons-on-record-page.jpg)
+
 ### Full-text search
 
 Full-text search is an amazing tool, allowing you to search for text within microfilm, books, and other previously unsearchable imagesin FamilySearch. You must [enable full-text search on your account](https://www.familysearch.org/en/labs/) to use this feature. When you're viewing a record match, you will see a link to open the full-text search for that person's name in that record, saving you the work of hunting through images manually.
