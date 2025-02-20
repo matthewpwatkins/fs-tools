@@ -6,7 +6,7 @@ This is my own personal project is not based off FamilySearch source code or ass
 
 ## Installation
 
-1. Install Tampermonkey or Greasemonkey in your browser if you haven't already.
+1. [Install Tampermonkey](https://youtu.be/8tyjJD65zws) or Greasemonkey in your browser if you haven't already.
 2. Click [here](https://github.com/matthewpwatkins/fs-army-knife/releases/latest/download/fs-army-knife.user.js) to install the latest version of the script.
 
 That's it!
