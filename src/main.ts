@@ -21,7 +21,7 @@ async function main() {
     new FamilySearchPage(sessionStorage),
     new FamilySearchFilmPage(),
     new FamilySearchPersonDetailsPage(),
-    new FamilySearchRecordPage(),
+    new FamilySearchRecordPage(fsApiClient),
     new FamilySearchSearchResultsPage(),  
     new FindAGravePage(fsApiClient)
   ];

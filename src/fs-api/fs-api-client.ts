@@ -2,6 +2,7 @@ import { FsSessionIdStorage } from "./fs-session-id-storage";
 import { TokenResponse } from "./models/token-response";
 import { SearchRecordsResponse } from "./models/search-records-response";
 import { SourceAttachment } from "./models/source-attachment";
+import { GedcomX } from "./models/gedcomx";
 
 export class FsApiClient {
   private static readonly BASE_URL = 'https://www.familysearch.org';
@@ -35,6 +36,15 @@ export class FsApiClient {
 
     this.sessionId = res.access_token;
     this.sessionIdStorage.setSessionId(res.access_token);
+  }
+
+  public async getArk(ark: string): Promise<GedcomX> {
+    return this.request(true, `/${ark}`, new URLSearchParams({ useSLS: 'true' }), {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/x-gedcomx-v1+json',
+      }
+    });
   }
 
   public async searchRecords(searchParams: URLSearchParams): Promise<SearchRecordsResponse> {
