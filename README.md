@@ -37,9 +37,13 @@ Or if you are already viewing a film or other record, you can access full-text s
 
 ### Go to FamilySearch directly from FindAGrave
 
-If you're on FindAGrave memorial page, a button shows that directly links you to the corresponding FindAGrave record in FamilySearch, saving you the work of searching for the person manually.
+If you're on FindAGrave memorial page, there are now a series of icons for each memorial that are fetched and cached in your browser when you load the page
 
-![FindAGrave link](./docs/img/findagrave-link.jpg)
+- The page icon links to the corresponding FamilySearch record page for this FindAGrave memorial.
+- The person icon links to the FamilySearch person that the record is attached to (if it is attached to a person and you logged into FamilySearch before visiting FindAGrave).
+- The refresh icon allows you to fetch the latest information from FamilySearch for this record.
+
+![FindAGrave links](./docs/img/findagrave-links.jpg)
 
 ### Copy FamilySearch session ID
 
