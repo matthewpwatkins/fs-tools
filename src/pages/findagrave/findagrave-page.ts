@@ -1,5 +1,6 @@
 import { FINDAGRAVE_COLLECTION_ID, FS_FAVICON_URL, PERSON_ICON_HTML, RECORD_ICON_HTML, REFRESH_ICON_HTML } from "../../constants";
 import { FsApiClient } from "../../fs-api/fs-api-client";
+import { SourceAttachment } from "../../fs-api/models/source-attachment";
 import { Page } from "../../page";
 
 type MemorialElementData = {
@@ -229,24 +230,28 @@ export class FindAGravePage implements Page {
         'q.externalRecordId': memorialElementData.memorialId,
         'f.collectionId': FINDAGRAVE_COLLECTION_ID
       }));
-      console.log('searchRecordsResponse', searchRecordsResponse);
-      memorialElementData.fsRecordId = searchRecordsResponse.entries.length > 0
+      console.log(`Search records response for memorial ID ${memorialElementData.memorialId}`, searchRecordsResponse);
+      memorialElementData.fsRecordId = searchRecordsResponse?.entries?.length === 1
         ? searchRecordsResponse.entries[0].id : FindAGravePage.FS_ID_NONE;
       this.setCachedFsRecordId(memorialElementData.memorialId, memorialElementData.fsRecordId);
     }
 
     // Fetch the person ID if needed
+    let attachments: SourceAttachment[] | undefined = undefined;
     try {
       if (forceRefresh || !memorialElementData.fsPersonId && memorialElementData.fsRecordId !== FindAGravePage.FS_ID_NONE) {
-        const attachments = await this.fsApiClient.getAttachmentsForRecord(memorialElementData.fsRecordId);
-        console.log('attachments response', attachments);
-        const fsPersonId = attachments.length > 0 && attachments[0].persons.length > 0
-          ? attachments[0].persons[0].entityId : FindAGravePage.FS_ID_NONE;
-        memorialElementData.fsPersonId = fsPersonId;
-        this.setCachedFsPersonId(memorialElementData.memorialId, fsPersonId);
+        attachments = await this.fsApiClient.getAttachmentsForRecord(memorialElementData.fsRecordId);
       }
     } catch (e) {
       console.error('Error fetching person ID. The session ID is probably unauthed', e);
+    }
+
+    if (attachments) {
+      console.log(`Attachments response for memorialID ${memorialElementData.memorialId} (record ID ${memorialElementData.fsRecordId})`, attachments);
+      const fsPersonId = attachments.length > 0 && attachments[0].persons.length > 0
+        ? attachments[0].persons[0].entityId : FindAGravePage.FS_ID_NONE;
+      memorialElementData.fsPersonId = fsPersonId;
+      this.setCachedFsPersonId(memorialElementData.memorialId, fsPersonId);
     }
 
     // Update the button group in the UI
@@ -254,19 +259,19 @@ export class FindAGravePage implements Page {
   }
 
   private getCachedFsRecordId(memorialId: string): string | undefined {
-    return localStorage.getItem(`${memorialId}.fsRID`) || undefined;
+    return localStorage.getItem(`fs.${memorialId}.rid`) || undefined;
   }
 
   private setCachedFsRecordId(memorialId: string, fsRecordId: string): void {
-    localStorage.setItem(`${memorialId}.fsRID`, fsRecordId);
+    localStorage.setItem(`fs.${memorialId}.rid`, fsRecordId);
   }
 
   private getCachedFsPersonId(memorialId: string): string | undefined {
-    return localStorage.getItem(`${memorialId}.fsPID`) || undefined;
+    return localStorage.getItem(`fs.${memorialId}.pid`) || undefined;
   }
 
   private setCachedFsPersonId(memorialId: string, fsPersonId: string): void {
-    localStorage.setItem(`${memorialId}.fsPID`, fsPersonId);
+    localStorage.setItem(`fs.${memorialId}.pid`, fsPersonId);
   }
 
   private addSpinClassStyle(): void {
