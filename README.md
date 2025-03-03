@@ -1,4 +1,4 @@
-# FamilySearch Army Knife
+# FS Tool
 
 This is a Tampermonkey/GreaseMonkey script that adds extra functionality to make it easier to work on FamilySearch.org.
 
