@@ -1,4 +1,5 @@
-import { FINDAGRAVE_COLLECTION_ID, FS_FAVICON_URL, PERSON_ICON_HTML, RECORD_ICON_HTML, REFRESH_ICON_HTML } from "../../constants";
+import { FINDAGRAVE_COLLECTION_ID } from "../../constants";
+import { FS_FAVICON_URL, PERSON_ICON_HTML, RECORD_ICON_HTML, REFRESH_ICON_HTML, styleIcon } from "../../icons";
 import { FsApiClient } from "../../fs-api/fs-api-client";
 import { SourceAttachment } from "../../fs-api/models/source-attachment";
 import { Page } from "../../page";
@@ -21,7 +22,9 @@ export class FindAGravePage implements Page {
   private static readonly FS_DATA_REFRESH_LINK_CLASS = 'fs-data-refresh-link';
   private static readonly FS_ID_NONE = 'NONE';
   private static readonly MEMORIAL_ID_REGEX = /^\d+$/;
-  private static readonly MEMRIAL_PATH_NAMES = new Set(['search', 'edit', 'edit#gps-location', 'sponsor']);
+
+  // Blacklist of memorial names that are not actual memorials
+  private static readonly MEMRIAL_PATH_NAMES = new Set(['search', 'edit', 'edit#gps-location', 'sponsor', 'memorial']);
     
   private readonly fsApiClient: FsApiClient;
   private readonly memorialElements = new Map<HTMLElement, MemorialElementData>();
@@ -125,17 +128,8 @@ export class FindAGravePage implements Page {
     // Create the button group element if needed
     let fsLinkGroup = memorialElement.querySelector<HTMLSpanElement>(`.${FindAGravePage.FS_BTN_GROUP_CLASS}`);
     if (!fsLinkGroup) {
-      fsLinkGroup = document.createElement('span');
+      fsLinkGroup = document.createElement('div');
       fsLinkGroup.className = FindAGravePage.FS_BTN_GROUP_CLASS;
-
-      const fsMainLink = document.createElement('a');
-      fsMainLink.className = FindAGravePage.FS_MAIN_LINK_CLASS;
-
-      const fsIcon = document.createElement('img');
-      fsIcon.src = FS_FAVICON_URL;
-
-      fsMainLink.appendChild(fsIcon);
-      fsLinkGroup.appendChild(fsMainLink);
 
       const textElement = memorialElement.querySelector('h1, h2, h3, h4, h5, h6, p');
       if (textElement) {
@@ -155,6 +149,7 @@ export class FindAGravePage implements Page {
 
       const fsIcon = document.createElement('img');
       fsIcon.src = FS_FAVICON_URL;
+      styleIcon(fsIcon);
       fsMainLink.appendChild(fsIcon);
 
       fsLinkGroup.appendChild(fsMainLink);

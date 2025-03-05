@@ -1,14 +1,17 @@
-import { Name, Person, Date } from "../fs-api/models/gedcomx";
+import { Name, Date, GedcomX } from "../fs-api/models/gedcomx";
 
 // https://www.familysearch.org/en/search/tree/results?treeref=L4Y4-F5G&q.birthLikePlace=South+Carolina%2C+United+States&q.deathLikePlace=Baltimore%2C+Baltimore%2C+Maryland%2C+United+States
 // &q.deathLikeDate.from=1948&q.deathLikeDate.to=1952
 
-export function buildSearchUrlForPerson(entity: 'tree' | 'record', person: Person): URL {
+export function buildSearchUrlForPerson(entity: 'tree' | 'record', gx: GedcomX): URL {
   const searchParams = new URLSearchParams();
+
+  const focusedPersonReferenceId = gx.description?.substring(4);
+  const focusedPerson = gx.persons!.find(person => person.id === focusedPersonReferenceId) || gx.persons!.find(person => person.principal)!;
 
   // Names
   let nameCounter = 0;
-  for (const name of person.names) {
+  for (const name of focusedPerson.names) {
     const suffix = nameCounter === 0 ? '' : `.${nameCounter}`;
     let anyFound = false;
     const givenName = getName(name, 'http://gedcomx.org/Given');
@@ -37,8 +40,8 @@ export function buildSearchUrlForPerson(entity: 'tree' | 'record', person: Perso
   }
 
   // Facts
-  for (const fact of person.facts) {
-    if (fact.type === 'http://gedcomx.org/Birth') {
+  for (const fact of focusedPerson.facts || []) {
+    if (fact.type === 'http://gedcomx.org/Birth' || fact.type === 'http://gedcomx.org/Christening') {
       if (fact.date) {
         const year = getYear(fact.date);
         if (year) {
@@ -86,6 +89,51 @@ export function buildSearchUrlForPerson(entity: 'tree' | 'record', person: Perso
     }
   }
 
+  // Relationships
+  const importantRelationships = gx.relationships?.filter(r => (r.person1.resourceId === focusedPerson.id || r.person2.resourceId === focusedPersonReferenceId)) || [];
+
+  const counts: Record<string, number> = {
+    'spouse': 0,
+    'father': 0,
+    'mother': 0,
+    'other': 0
+  };
+
+  for (const relationship of importantRelationships) {
+    const isPerson1 = relationship.person1.resourceId === focusedPerson.id;
+    const otherPersonId = isPerson1 ? relationship.person2.resourceId : relationship.person1.resourceId;
+    const otherPerson = gx.persons!.find(person => person.id === otherPersonId)!;
+
+    let queryName = '';
+    if (relationship.type === 'http://gedcomx.org/Couple') {
+      queryName = 'spouse';
+    } else if (relationship.type === 'http://gedcomx.org/ParentChild' && !isPerson1 && otherPerson.gender?.type !== 'http://gedcomx.org/Unknown') {
+      if (otherPerson.gender!.type === 'http://gedcomx.org/Male') {
+        queryName = 'father';
+      } else {
+        queryName = 'mother';
+      }
+    } else {
+      queryName = 'other';
+    }
+
+    const queryStringSuffix = counts[queryName] === 0 ? '' : `.${counts[queryName]}`;
+
+    for (const name of otherPerson.names) {
+      const givenName = getName(name, 'http://gedcomx.org/Given');
+      if (givenName) {
+        searchParams.append(`q.${queryName}GivenName${queryStringSuffix}`, givenName);
+      }
+
+      const surname = getName(name, 'http://gedcomx.org/Surname');
+      if (surname) {
+        searchParams.append(`q.${queryName}Surname${queryStringSuffix}`, surname);
+      }
+    }
+
+    counts[queryName]++;
+  }
+
   // Build URL
   const searchURL = new URL(`https://www.familysearch.org/en/search/${entity}/results`);
   searchURL.search = searchParams.toString();
@@ -107,10 +155,15 @@ function getName(name: Name, type: string): string | undefined {
 }
 
 function getYear(date: Date): number | undefined {
+  if (date.formal) {
+    return parseInt(date.formal.split('-')[0]);
+  }
+  
   for (const field of date.fields || []) {
     if (field.type === 'http://gedcomx.org/Year') {
       return parseInt(field.values[0].text);
     }
   }
+  
   return undefined;
 }

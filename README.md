@@ -1,65 +1,62 @@
 # FS Tool
 
-This is a Tampermonkey/GreaseMonkey script that adds extra functionality to make it easier to work on FamilySearch.org.
+This is a Chrome / Edge extension that adds extra functionality to make it easier to work on FamilySearch.org and integrate to other geneaoly sites.
 
-This is my own personal project is not based off FamilySearch source code or associated with FamilySearch in any way.
-
-## Installation
-
-1. [Install Tampermonkey](https://youtu.be/8tyjJD65zws) or Greasemonkey in your browser if you haven't already.
-2. Click [here](https://github.com/matthewpwatkins/fs-army-knife/releases/latest/download/fs-army-knife.user.js) to install the latest version of the script.
-
-That's it!
+**NOTE:** This is my own personal project is not based off FamilySearch source code or associated with FamilySearch in any way.
 
 ## Features
 
-### Search for possible duplicates in the tree from the person view
+FS Tools adds several helpful features to FamilySearch.org, FindAGrave.com, and other helpful genealogical research sites to improve your FamilySearch tree-building experience. Features:
 
-FamilySearch already allows you to easily search for records within FamilySearch from within the person view. I've also added a button to search the tree for duplication people from the person view.
+### One-click search for potential duplicates
 
-![Tree Search Button](./docs/img/tree-search-link.jpg)
+Sometimes there is another version of the person you are working on somewhere else in the tree. But you won't see a "Possible duplicate" hint on that person unless the system is *very* confident. Experienced users know to go search the tree to see if there is another version of that person somewhere in the tree. Constructing this search takes time.
 
-### Search the tree and other records from a record page
+FS Tools adds a link to the records section of the page that builds that search for you based on the information on the page. You can check for potential duplicates with a single click!
 
-When you're viewing a record, you can search the tree for the person in the record, or search for other records for this person without manually typing in all the informatino yourself.
+![Tree Search](./docs/img/screenshots/tree-search.png)
 
-![Record search buttons](./docs/img/search-buttons-on-record-page.jpg)
+### Search from record
 
-### Full-text search
+When you're looking at a record on FamilySearch and the record isn't attached as a source to a person, the system helpfully shows you a list of what it thinks might be related records along the side. But this is a very short list. And it only shows if the record isn't attached. If you want to search the tree or other records based on the information of a record, you currently have to open up a search window (one for records and one for the tree) and type all the information from the record.
 
-Full-text search is an amazing tool, allowing you to search for text within microfilm, books, and other previously unsearchable imagesin FamilySearch. You must [enable full-text search on your account](https://www.familysearch.org/en/labs/) to use this feature. When you're viewing a record match, you will see a link to open the full-text search for that person's name in that record, saving you the work of hunting through images manually.
+FS Tools adds links to the record to automatically perform a search of the records or tree system based on the information present in the record you're looking at.
 
-![Full-text search link](./docs/img/film-search-from-record-page.jpg)
+![Search from Records Page](./docs/img/screenshots/search-from-records-page.png)
 
-Or if you are already viewing a film or other record, you can access full-text search from the film details page:
+### Full-text search on films
 
-![Full-text search link](./docs/img/film-search.jpg)
+FamilySearch added [a new labs feature called "Full-Text Search"](https://www.familysearch.org/en/labs/) that leverages the power of AI to search films and other images for text. This is especially helpful when you want to read a record from a microfilm scan but the page number is not included in the record. But opening the full-text search tool and building the search parameters for your film is tricky.
 
-### Go to FamilySearch directly from FindAGrave
+FS Tools adds a full-text search box to all film records, allowing you to quickly jump right to the page you want!
 
-If you're on FindAGrave memorial page, there are now a series of icons for each memorial that are fetched and cached in your browser when you load the page
+![Full-Text Search](./docs/img/screenshots/full-text-search.png)
 
-- The page icon links to the corresponding FamilySearch record page for this FindAGrave memorial.
-- The person icon links to the FamilySearch person that the record is attached to (if it is attached to a person and you logged into FamilySearch before visiting FindAGrave).
-- The refresh icon allows you to fetch the latest information from FamilySearch for this record.
+### Find-a-Grave integration
 
-![FindAGrave links](./docs/img/findagrave-links.jpg)
+When browsing Find-a-Grave, FS Tools adds icons linking you from the grave memorial to the corresponding record in FamilySearch. If you have already logged into FamilySearch in your browser, it will even show you whether there is already a person in the tree for that grave record!
 
-### Copy FamilySearch session ID
+![Find-a-Grave integration](./docs/img/screenshots/findagrave-integration.png)
 
-This is for the developers. It adds a menu item to Tampermonkey to copy your FamilySearch session ID to the clipboard so you don't have to grab it out of your cookies yourself.
+### More features to come
 
-## Suggestions
+FS Tools is a new extension, and I'm adding features all the time. If you think of an idea you'd like to see, contact me at watkins.dev!
 
-If you want to suggest new features, reach out to me at [watkins.dev](https://watkins.dev).
+## Installation
+
+I'm working to get this published. In the meantime, if you are tech-savvy, you can install this extension manually (see below).
+
+- [Chrome](https://chromewebstore.google.com/detail/fs-tools/mdkonnbiomkkmccchabmcjgocnbpokah) (coming soon)
+- Edge (coming soon)
+- Opera (coming soon)
+- Firefox (coming soon)
 
 ## Developing locally
 
 1. Clone the repository
 2. `npm install`
 3. `npm run build`
-4. The `.user.js` script is output to the dist folder.
-
-## Releases
-
-Just push or pull request into master to create a new release.
+4. Open a Chromium-based browser (Chrome, Edge, Opera)
+5. Go to `chrome://extensions`
+6. Enable Developer Mode (if not enabled already)
+7. Click "Load unpacked" and select the `dist` directory in the repository.

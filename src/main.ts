@@ -8,10 +8,10 @@ import { FamilySearchPersonDetailsPage } from "./pages/familysearch/familysearch
 import { FamilySearchRecordPage } from "./pages/familysearch/familysearch-record-page";
 import { FamilySearchSearchResultsPage } from "./pages/familysearch/familysearch-search-results-page";
 import { FindAGravePage } from "./pages/findagrave/findagrave-page";
-import { TampermonkeyFsSessionIdStorage } from "./fs-api/tampermonkey-fs-session-id-storage";
+import { ChromeExtensionFsSessionIdStorage } from "./fs-api/tampermonkey-fs-session-id-storage";
 
 async function main() {
-  const sessionStorage = new TampermonkeyFsSessionIdStorage();
+  const sessionStorage = new ChromeExtensionFsSessionIdStorage();
   const sessionID = await sessionStorage.getSessionId();
   console.log(`MAIN. SessionID = ${sessionID}`);
 

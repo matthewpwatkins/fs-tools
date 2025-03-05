@@ -1,4 +1,4 @@
-import { FS_FAVICON_URL } from "../../constants";
+import { FS_FAVICON_URL } from "../../icons";
 import { Page } from "../../page";
 
 /**
