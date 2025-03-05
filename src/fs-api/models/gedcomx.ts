@@ -1,5 +1,6 @@
 export interface GedcomX {
   attribution?: Attribution;
+  description?: string;
   persons?: Person[];
   relationships?: Relationship[];
   sourceDescriptions?: SourceDescription[];
@@ -10,7 +11,7 @@ export interface GedcomX {
 }
 
 export interface ResourceReference {
-  resource: string;
+  resourceId: string;
 }
 
 export interface Identifier {
@@ -82,7 +83,7 @@ export interface Gender {
 
 export interface Date {
   original: string;
-  formal: string;
+  formal?: string;
   fields: Field[];
 }
 
@@ -168,6 +169,7 @@ export interface PlaceDescription {
 }
 
 export interface Person {
+  id?: string;
   private: boolean;
   principal: boolean;
   gender?: Gender;

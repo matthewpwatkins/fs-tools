@@ -71,7 +71,7 @@ export class FsApiClient {
       headers: {
         'Content-Type': 'application/json'
       },
-      data: JSON.stringify(body)
+      body: body ? JSON.stringify(body) : undefined
     });
   }
 
@@ -81,11 +81,11 @@ export class FsApiClient {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded'
       },
-      data: body
+      body: body.toString()
     });
   }
 
-  private async request<T>(requireAuth: boolean, path: string, queryStringParams: URLSearchParams, options: Omit<Tampermonkey.Request,  'url' | 'onload' | 'onerror'>): Promise<T> {
+  private async request<T>(requireAuth: boolean, path: string, queryStringParams: URLSearchParams, options: Omit<RequestInit, 'url'>): Promise<T> {
     const baseHeaders: Record<string, string> = {
       'Accept': 'application/json, text/plain, */*'
     };
@@ -100,26 +100,19 @@ export class FsApiClient {
       url.searchParams.append(key, value);
     }
     
-    return new Promise<T>((resolve, reject) => {
-      GM.xmlHttpRequest({
-        ...options,
-        url,
-        headers: {
-          ...baseHeaders,
-          ...options.headers
-        },
-        onload: (response) => {
-          if (response.status >= 200 && response.status < 300) {
-            resolve(JSON.parse(response.responseText));
-          } else {
-            reject(new Error(`${options.method} request to ${url} failed with status ${response.status}`));
-          }
-        },
-        onerror: (error) => {
-          reject(new Error(`${options.method} request to ${url} failed onerror with message: ${JSON.stringify(error)}`));
-        }
-      });
+    const response = await fetch(url.toString(), {
+      ...options,
+      headers: {
+        ...baseHeaders,
+        ...options.headers
+      }
     });
+
+    if (!response.ok) {
+      throw new Error(`${options.method} request to ${url} failed with status ${response.status}`);
+    }
+
+    return response.json();
   }
 
   // #endregion

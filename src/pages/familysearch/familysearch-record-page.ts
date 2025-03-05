@@ -1,12 +1,15 @@
+import { SEARCH_ICON_HTML } from "../../icons";
 import { FsApiClient } from "../../fs-api/fs-api-client";
-import { Name, Date } from "../../fs-api/models/gedcomx";
 import { Page } from "../../page";
+import { createFullTextSearchForm } from "../../util/familysearch-utils";
 import { buildSearchUrlForPerson } from "../../util/gedcomx-utils";
 
 export class FamilySearchRecordPage implements Page {
   private static readonly FS_TREE_SEARCH_LINK_ID = 'fs-tree-search-link';
   
   private readonly fsApiClient: FsApiClient;
+
+  private searchLinksGenerated = false;
 
   constructor(fsApiClient: FsApiClient) {
     this.fsApiClient = fsApiClient;
@@ -41,7 +44,7 @@ export class FamilySearchRecordPage implements Page {
       return;
     }
 
-    const modalText = modal.querySelector('p');
+    const modalText = [...modal.querySelectorAll('p')].pop();
     if (!modalText) {
       return;
     }
@@ -62,25 +65,32 @@ export class FamilySearchRecordPage implements Page {
       return;
     }
 
-    searchButton = browseButton.cloneNode(true) as HTMLElement;
-    searchButton.id = 'btn-search-film';
-    searchButton.textContent = '🔎 Search the Film';
-    searchButton.onclick = () => {
-      // document.location.href = `/search/full-text/results?q.groupName=${filmNumber}&q.text=${encodeURIComponent(searchName)}`;
-      window.open(`/search/full-text/results?q.groupName=${filmNumber}&q.text=${encodeURIComponent(searchName)}`, '_blank');
-    };
-    
-    // Add the search button to the end of the text
-    modalText.appendChild(searchButton);
+    const newText = modalText.cloneNode(true) as HTMLElement;
+    newText.innerText = 'Or you can search the AI-transcribed text of the film:';
+    modalText.parentNode?.insertBefore(newText, modalText.nextSibling);
+
+    const searchForm = createFullTextSearchForm({
+      id: 'btn-search-film',
+      groupName: filmNumber,
+      placeholderText: 'Search this film',
+      defaultValue: searchName
+    });
+
+    const searchFormContainer = document.createElement('div');
+    searchFormContainer.style.marginTop = '10px';
+    searchFormContainer.style.display = 'flex';
+    searchFormContainer.style.justifyContent = 'center';
+    searchFormContainer.appendChild(searchForm);
+
+    modalText.parentNode?.insertBefore(searchFormContainer, newText.nextSibling);
   }
 
   private async addTreeSearchLink() {    
-    let fsTreeSearchLink = document.getElementById(FamilySearchRecordPage.FS_TREE_SEARCH_LINK_ID);
-    if (fsTreeSearchLink) {
+    if (this.searchLinksGenerated) {
       return;
     }
 
-    const attachToTreeButton = document.querySelector('[data-testid="attachToFamilyTree-Button"]');
+    const attachToTreeButton = document.querySelector<HTMLAnchorElement>('[data-testid="attachToFamilyTree-Button"]');
     if (!attachToTreeButton) {
       return;
     }
@@ -90,26 +100,30 @@ export class FamilySearchRecordPage implements Page {
       return;
     }
 
-    console.log('Record ARK', recordArk);
+    this.searchLinksGenerated = true;
     const record = await this.fsApiClient.getArk(recordArk);
-    console.log('Record GEDCOMX', record);
-
     const primaryPerson = record.persons?.find(person => person.principal);
     if (!primaryPerson) {
       return;
     }
 
-    for (const entityType of ['tree', 'record']) {
-      const searchURL = buildSearchUrlForPerson(entityType as 'tree' | 'record', primaryPerson);
-      const treeSearchLink = document.createElement('a');
-      treeSearchLink.id = FamilySearchRecordPage.FS_TREE_SEARCH_LINK_ID;
-      treeSearchLink.setAttribute('href', searchURL.toString());
-      treeSearchLink.setAttribute('target', '_blank');
-      treeSearchLink.innerText = '🔎 Search ' + (entityType === 'tree' ? 'Family Tree' : 'Records');
-      const div = document.createElement('div');
-      div.style.marginBottom = '10px';
-      div.appendChild(treeSearchLink);
-      attachToTreeButton.parentElement?.insertBefore(div, attachToTreeButton);
-    }    
+    const treeSearchButton = attachToTreeButton.cloneNode(true) as HTMLAnchorElement;
+    treeSearchButton.innerHTML = `${SEARCH_ICON_HTML} Search Tree`;
+    treeSearchButton.href = buildSearchUrlForPerson('tree', record).toString();
+    treeSearchButton.style.marginBottom = '10px';
+
+    const treeSearchButtonContainer = document.createElement('div');
+    treeSearchButtonContainer.appendChild(treeSearchButton);
+
+    const recordSearchButton = attachToTreeButton.cloneNode(true) as HTMLAnchorElement;
+    recordSearchButton.innerHTML = `${SEARCH_ICON_HTML} Search Records`;
+    recordSearchButton.href = buildSearchUrlForPerson('record', record).toString();
+    recordSearchButton.style.marginBottom = '10px';
+
+    const recordSearchButtonContainer = document.createElement('div');
+    recordSearchButtonContainer.appendChild(recordSearchButton);
+
+    attachToTreeButton.parentElement?.insertBefore(treeSearchButtonContainer, attachToTreeButton);
+    attachToTreeButton.parentElement?.insertBefore(recordSearchButtonContainer, treeSearchButtonContainer);
   }
 }

@@ -7,6 +7,11 @@ import { Page } from "../../page";
 export class FamilySearchPersonDetailsPage implements Page {
   private static readonly SOURCES_GRID_LINK_ID = 'sources-grid-link';
   private static readonly TREE_SEARCH_LINK_ID = 'tree-search-link';
+  private readonly shouldInjectSourcesGridLink: boolean;
+
+  constructor() {
+    this.shouldInjectSourcesGridLink = localStorage.getItem('shouldInjectSourcesGridLink') === 'true';
+  }
   
   async isMatch(url: URL): Promise<boolean> {
     return url.hostname.toLowerCase().endsWith('familysearch.org')
@@ -22,7 +27,9 @@ export class FamilySearchPersonDetailsPage implements Page {
   }
 
   async onPageContentUpdate(updateID: string): Promise<void> {
-    this.injectSourcesGridLink();
+    if (this.shouldInjectSourcesGridLink) {
+      this.injectSourcesGridLink();
+    }
     this.injectTreeSearchLink();
   }
 
@@ -78,7 +85,7 @@ export class FamilySearchPersonDetailsPage implements Page {
       treeSearchLink.href = treeSearchLink.href.replace('/search/record/', '/search/tree/');
       const treeSearchLinkSpan = Array.from(treeSearchLink.querySelectorAll('span'))
         .find(span => span.textContent?.trim().length)!;
-      treeSearchLinkSpan.textContent = 'FamilySearch - Tree';
+      treeSearchLinkSpan.textContent = 'FamilySearch - Potential Duplicates';
 
       recordLinkLi.parentNode?.insertBefore(treeSearchLinkLi, recordLinkLi);
     }

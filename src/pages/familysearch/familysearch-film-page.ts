@@ -1,14 +1,13 @@
 import { Page } from "../../page";
+import { createFullTextSearchForm } from "../../util/familysearch-utils";
 
 /**
  * Runs on all film detail pages.
- * Adds a search link to the page.
+ * Adds a search form to the page that allows searching within the film.
  */
 
-// TODO: Add a search bar instead of just a link
-
 export class FamilySearchFilmPage implements Page {
-  private static readonly SEARCH_LINK_ID = 'full-text-film-search-link';  
+  private static readonly SEARCH_FORM_ID = 'full-text-film-search-form';  
 
   async isMatch(url: URL): Promise<boolean> {
     return url.hostname.toLowerCase().endsWith('familysearch.org')
@@ -24,7 +23,7 @@ export class FamilySearchFilmPage implements Page {
   }
 
   async onPageContentUpdate(updateID: string): Promise<void> {
-    if (document.getElementById(FamilySearchFilmPage.SEARCH_LINK_ID)) {
+    if (document.getElementById(FamilySearchFilmPage.SEARCH_FORM_ID)) {
       return;
     }
 
@@ -46,17 +45,11 @@ export class FamilySearchFilmPage implements Page {
       return;
     }
 
-    const searchLink = this.createSearchLink(filmNumber);
-    fileNumberHeaderSpan.appendChild(searchLink);
-  }
-
-  private createSearchLink(filmNumber: string): HTMLAnchorElement {
-    const searchLink = document.createElement('a');
-    searchLink.id = FamilySearchFilmPage.SEARCH_LINK_ID;
-    searchLink.textContent = '🔎 Search';
-    searchLink.href = `/search/full-text/results?q.groupName=${filmNumber}`;
-    searchLink.target = '_blank';
-    searchLink.style.marginLeft = '10px';
-    return searchLink;
-  }
+    const searchForm = createFullTextSearchForm({
+      id: FamilySearchFilmPage.SEARCH_FORM_ID,
+      placeholderText: 'Search this film',
+      groupName: filmNumber
+    });
+    fileNumberHeaderSpan.parentNode!.parentElement!.parentNode!.appendChild(searchForm);
+  }  
 }

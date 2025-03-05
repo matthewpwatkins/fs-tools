@@ -1,10 +1,19 @@
-export class TampermonkeyFsSessionIdStorage {
+export class ChromeExtensionFsSessionIdStorage {
   private static readonly SESSION_ID_STORAGE_KEY = 'fs-session-id';
 
   async getSessionId(): Promise<string | undefined> {
-      return GM.getValue(TampermonkeyFsSessionIdStorage.SESSION_ID_STORAGE_KEY);
+    return new Promise((resolve) => {
+      chrome.storage.local.get([ChromeExtensionFsSessionIdStorage.SESSION_ID_STORAGE_KEY], (result) => {
+        resolve(result[ChromeExtensionFsSessionIdStorage.SESSION_ID_STORAGE_KEY]);
+      });
+    });
   }
+
   async setSessionId(sessionId: string): Promise<void> {
-      return GM.setValue(TampermonkeyFsSessionIdStorage.SESSION_ID_STORAGE_KEY, sessionId);
+    return new Promise((resolve) => {
+      chrome.storage.local.set({ [ChromeExtensionFsSessionIdStorage.SESSION_ID_STORAGE_KEY]: sessionId }, () => {
+        resolve();
+      });
+    });
   }
 }
