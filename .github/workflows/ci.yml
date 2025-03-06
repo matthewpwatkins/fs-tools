@@ -5,6 +5,7 @@ on:
     branches:
       - master
     paths:
+      - '.github/**'
       - 'icons/**'
       - 'src/**'
       - '*.ts'
@@ -14,6 +15,7 @@ on:
     branches:
       - master
     paths:
+      - '.github/**'
       - 'icons/**'
       - 'src/**'
       - '*.ts'
@@ -57,7 +59,7 @@ jobs:
       run: npm run build
 
     - name: Create zip file
-      run: zip -r fs-tools-chrome.zip dist/*
+      run: mv dist fs-tools && zip -r ./fs-tools-chrome.zip ./fs-tools
 
     - name: Create Release
       id: create_release

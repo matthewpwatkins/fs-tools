@@ -44,12 +44,13 @@ FS Tools is a new extension, and I'm adding features all the time. If you think 
 
 ## Installation
 
-I'm working to get this published. In the meantime, if you are tech-savvy, you can install this extension manually (see below).
+I'm working to get this published. In the meantime, you can install the extension manually. Instructions:
 
-- [Chrome](https://chromewebstore.google.com/detail/fs-tools/mdkonnbiomkkmccchabmcjgocnbpokah) (coming soon)
-- Edge (coming soon)
-- Opera (coming soon)
-- Firefox (coming soon)
+1. Download the [latest release](https://github.com/matthewpwatkins/fs-tool/releases/latest/download/fs-tools-chrome.zip).
+2. Extract the fs-tools folder to your computer.
+3. Open your browser and go to `chrome://extensions`.
+4. Enable Developer Mode (if not enabled already).
+5. Click "Load unpacked" and select the `fs-tools` directory you extracted.
 
 ## Developing locally
 
