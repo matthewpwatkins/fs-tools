@@ -4,9 +4,21 @@ on:
   push:
     branches:
       - master
+    paths:
+      - 'icons/**'
+      - 'src/**'
+      - '*.ts'
+      - '*.js'
+      - '*.json'
   pull_request:
     branches:
       - master
+    paths:
+      - 'icons/**'
+      - 'src/**'
+      - '*.ts'
+      - '*.js'
+      - '*.json'
   workflow_dispatch:
 
 jobs:
@@ -45,7 +57,7 @@ jobs:
       run: npm run build
 
     - name: Create zip file
-      run: zip -r fs-tools-chrome.zip dist
+      run: zip -r fs-tools-chrome.zip dist/*
 
     - name: Create Release
       id: create_release
