@@ -1,4 +1,4 @@
-# FS Tools
+# <img src="./icons/icon-128.png" style="height: 1em; width: 1em;" alt="Icon" /> FS Tools
 
 This is a Chrome / Edge extension that adds extra functionality to make it easier to work on FamilySearch.org and integrate to other geneaoly sites.
 
