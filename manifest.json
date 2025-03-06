@@ -2,7 +2,7 @@
   "name": "FS Tools",
   "description": "Supercharge your FamilySearch experience!",
   "homepage_url": "https://watkins.dev",
-  "version": "0.1",
+  "version": "CURRENT-VERSION",
   "manifest_version": 3,
   "permissions": [
     "scripting",
