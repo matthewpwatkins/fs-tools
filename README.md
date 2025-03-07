@@ -4,6 +4,18 @@ This is a Chrome / Edge extension that adds extra functionality to make it easie
 
 **NOTE:** This is my own personal project is not based off FamilySearch source code or associated with FamilySearch in any way.
 
+## Installation
+
+Install the extension from your browser's extension or add-on list:
+
+- [Chrome](https://chromewebstore.google.com/detail/fs-tools/mdkonnbiomkkmccchabmcjgocnbpokah)
+- Edge (use the Chrome link)
+- Brave (use the Chrome link)
+- DuckDuckGo (use the Chrome link)
+- Opera (use the Chrome link)
+- Firefox (coming soon)
+- Safari (coming soon)
+
 ## Features
 
 FS Tools adds several helpful features to FamilySearch.org, FindAGrave.com, and other helpful genealogical research sites to improve your FamilySearch tree-building experience. Features:
@@ -41,16 +53,6 @@ When browsing Find-a-Grave, FS Tools adds icons linking you from the grave memor
 ### More features to come
 
 FS Tools is a new extension, and I'm adding features all the time. If you think of an idea you'd like to see, contact me at watkins.dev!
-
-## Installation
-
-I'm working to get this published. In the meantime, you can install the extension manually. Instructions:
-
-1. Download the [latest release](https://github.com/matthewpwatkins/fs-tool/releases/latest/download/fs-tools-chrome.zip).
-2. Extract the fs-tools folder to your computer.
-3. Open your browser and go to `chrome://extensions`.
-4. Enable Developer Mode (if not enabled already).
-5. Click "Load unpacked" and select the `fs-tools` directory you extracted.
 
 ## Developing locally
 
