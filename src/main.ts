@@ -8,7 +8,7 @@ import { FamilySearchPersonDetailsPage } from "./pages/familysearch/familysearch
 import { FamilySearchRecordPage } from "./pages/familysearch/familysearch-record-page";
 import { FamilySearchSearchResultsPage } from "./pages/familysearch/familysearch-search-results-page";
 import { FindAGravePage } from "./pages/findagrave/findagrave-page";
-import { ChromeExtensionFsSessionIdStorage } from "./fs-api/tampermonkey-fs-session-id-storage";
+import { ChromeExtensionFsSessionIdStorage } from "./fs-api/chrome-extension-fs-session-id-storage";
 
 async function main() {
   const sessionStorage = new ChromeExtensionFsSessionIdStorage();

@@ -32,11 +32,10 @@ export class FamilySearchPage implements Page {
   }
 
   private updateSessionId(): void {
-    if (!this.sessionId) {
-      this.sessionId = getFamilySearchSessionIdFromCookie();
-      if (this.sessionId) {
-        this.sessionIdStorage.setSessionId(this.sessionId);
-      }
+    const currentSessionId = getFamilySearchSessionIdFromCookie();
+    if (currentSessionId && currentSessionId !== this.sessionId) {
+      this.sessionId = currentSessionId;
+      this.sessionIdStorage.setSessionId(this.sessionId);
     }
   }
 }
