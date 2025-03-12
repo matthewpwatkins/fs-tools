@@ -111,7 +111,7 @@ export function buildSearchUrlForPerson(entity: 'tree' | 'record', gx: GedcomX, 
     const otherPersonId = isPerson1 ? relationship.person2.resourceId : relationship.person1.resourceId;
     const otherPerson = gx.persons!.find(person => person.id === otherPersonId)!;
 
-    let queryName = '';
+    let queryName = 'other';
     if (relationship.type === 'http://gedcomx.org/Couple') {
       queryName = 'spouse';
     } else if (relationship.type === 'http://gedcomx.org/ParentChild' && !isPerson1 && otherPerson.gender?.type !== 'http://gedcomx.org/Unknown') {
@@ -120,8 +120,6 @@ export function buildSearchUrlForPerson(entity: 'tree' | 'record', gx: GedcomX, 
       } else {
         queryName = 'mother';
       }
-    } else {
-      queryName = 'other';
     }
 
     for (const name of otherPerson.names) {
