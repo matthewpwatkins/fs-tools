@@ -5,7 +5,8 @@ import { SourceAttachment } from "./models/source-attachment";
 import { GedcomX } from "./models/gedcomx";
 
 export class FsApiClient {
-  private static readonly BASE_URL = 'https://www.familysearch.org';
+  private static readonly WEB_BASE_URL = 'https://www.familysearch.org';
+  private static readonly API_BASE_URL = 'https://api.familysearch.org';
   private static readonly CLIENT_ID = 'a02f100000TnN56AAF';
   // TODO: Use the user's actual IP address
   private static readonly IP_ADDRESS = '216.49.186.122';
@@ -38,8 +39,22 @@ export class FsApiClient {
     this.sessionIdStorage.setSessionId(res.access_token);
   }
 
+  public async getPerson(personId: string, includeRelatives?: boolean): Promise<GedcomX> {
+    return await this.request(true, `${FsApiClient.API_BASE_URL}/platform/tree/persons/${personId}`, new URLSearchParams({
+      'relatives': includeRelatives ? 'true' : 'false'
+    }), {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/x-gedcomx-v1+json',
+      }
+    });
+  }
+
   public async getArk(ark: string): Promise<GedcomX> {
-    return this.request(true, `/${ark}`, new URLSearchParams({ useSLS: 'true' }), {
+    const params = new URLSearchParams();
+    params.append('useSLS', 'true');
+
+    return this.request(true, `/${ark}`, params, {
       method: 'GET',
       headers: {
         'Accept': 'application/x-gedcomx-v1+json',
@@ -95,7 +110,7 @@ export class FsApiClient {
       baseHeaders['Authorization'] = `Bearer ${this.sessionId!}`;
     }
     
-    const url = new URL(path, FsApiClient.BASE_URL);
+    const url = path.startsWith('/') ? new URL(path, FsApiClient.WEB_BASE_URL) : new URL(path);
     for (const [key, value] of queryStringParams) {
       url.searchParams.append(key, value);
     }

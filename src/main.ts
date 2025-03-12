@@ -20,7 +20,7 @@ async function main() {
     // new BillionGravesGravePage(),
     new FamilySearchPage(sessionStorage),
     new FamilySearchFilmPage(),
-    new FamilySearchPersonDetailsPage(),
+    new FamilySearchPersonDetailsPage(fsApiClient),
     new FamilySearchRecordPage(fsApiClient),
     new FamilySearchSearchResultsPage(),  
     new FindAGravePage(fsApiClient)

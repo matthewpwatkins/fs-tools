@@ -1,4 +1,6 @@
+import { FsApiClient } from "../../fs-api/fs-api-client";
 import { Page } from "../../page";
+import { buildSearchUrlForPerson } from "../../util/gedcomx-utils";
 
 /**
  * Runs on all person detail pages.
@@ -7,9 +9,11 @@ import { Page } from "../../page";
 export class FamilySearchPersonDetailsPage implements Page {
   private static readonly SOURCES_GRID_LINK_ID = 'sources-grid-link';
   private static readonly TREE_SEARCH_LINK_ID = 'tree-search-link';
+  private readonly fsApiClient: FsApiClient;
   private readonly shouldInjectSourcesGridLink: boolean;
 
-  constructor() {
+  constructor(fsApiClient: FsApiClient) {
+    this.fsApiClient = fsApiClient;
     this.shouldInjectSourcesGridLink = localStorage.getItem('shouldInjectSourcesGridLink') === 'true';
   }
   
@@ -30,7 +34,7 @@ export class FamilySearchPersonDetailsPage implements Page {
     if (this.shouldInjectSourcesGridLink) {
       this.injectSourcesGridLink();
     }
-    this.injectTreeSearchLink();
+    await this.injectTreeSearchLink();
   }
 
   private injectSourcesGridLink(): void {
@@ -63,43 +67,45 @@ export class FamilySearchPersonDetailsPage implements Page {
     return sourcesGridLink;
   }
 
-  private injectTreeSearchLink(): void {
+  private async injectTreeSearchLink(): Promise<void> {
     let treeSearchLink = document.getElementById(FamilySearchPersonDetailsPage.TREE_SEARCH_LINK_ID) as HTMLAnchorElement;
     if (!treeSearchLink) {
-      const recordLink = document.querySelector<HTMLAnchorElement>('li a[href*="/search/record/results"]');
-      if (!recordLink) {
+      const pid = document.location.pathname.split('/').pop();
+      if (!pid) {
         return;
       }
 
-      const recordLinkLi = recordLink.closest('li')!;
-      if (!recordLinkLi) {
+      const recordSearchLink = document.querySelector<HTMLAnchorElement>('li a[href*="/search/record/results"]');
+      if (!recordSearchLink) {
         return;
       }
 
-      const recordLinkSpan = Array.from(recordLink.querySelectorAll('span'))
+      const recordSearchLi = recordSearchLink.closest('li')!;
+      if (!recordSearchLi) {
+        return;
+      }
+
+      const recordSearchSpan = Array.from(recordSearchLink.querySelectorAll('span'))
         .find(span => span.textContent?.trim().length);
-      if (!recordLinkSpan) {
+      if (!recordSearchSpan) {
         return;
       }
 
-      // Add gender to the search query
-      const gender = document.querySelector('span[data-testid="conclusion-gender"]')?.textContent;
-      if (!gender) {
-        return;
-      }
+      const gx = await this.fsApiClient.getPerson(pid, true);
+      console.log('GX', gx);
 
-      recordLink.href += `&q.sex=${gender}`;
-      recordLinkSpan.textContent = 'FamilySearch - Records';
+      recordSearchLink.href = buildSearchUrlForPerson('record', gx).toString();
+      recordSearchSpan.textContent = 'FamilySearch - Records';
 
-      const treeSearchLinkLi = recordLinkLi.cloneNode(true) as HTMLLIElement;
+      const treeSearchLinkLi = recordSearchLi.cloneNode(true) as HTMLLIElement;
       treeSearchLink = treeSearchLinkLi.querySelector('a[href*="/search/record/results"]') as HTMLAnchorElement;
       treeSearchLink.id = FamilySearchPersonDetailsPage.TREE_SEARCH_LINK_ID;
-      treeSearchLink.href = treeSearchLink.href.replace('/search/record/', '/search/tree/');
+      treeSearchLink.href = buildSearchUrlForPerson('tree', gx).toString();
       const treeSearchLinkSpan = Array.from(treeSearchLink.querySelectorAll('span'))
         .find(span => span.textContent?.trim().length)!;
       treeSearchLinkSpan.textContent = 'FamilySearch - Potential Duplicates';
 
-      recordLinkLi.parentNode?.insertBefore(treeSearchLinkLi, recordLinkLi);
+      recordSearchLi.parentNode?.insertBefore(treeSearchLinkLi, recordSearchLi);
     }
   }
 }

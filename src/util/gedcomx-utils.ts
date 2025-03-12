@@ -117,21 +117,25 @@ export function buildSearchUrlForPerson(entity: 'tree' | 'record', gx: GedcomX):
       queryName = 'other';
     }
 
-    const queryStringSuffix = counts[queryName] === 0 ? '' : `.${counts[queryName]}`;
-
     for (const name of otherPerson.names) {
+      const queryStringSuffix = counts[queryName] === 0 ? '' : `.${counts[queryName]}`;
+      let anyAdded = false;
       const givenName = getName(name, 'http://gedcomx.org/Given');
       if (givenName) {
         searchParams.append(`q.${queryName}GivenName${queryStringSuffix}`, givenName);
+        anyAdded = true;
       }
 
       const surname = getName(name, 'http://gedcomx.org/Surname');
       if (surname) {
         searchParams.append(`q.${queryName}Surname${queryStringSuffix}`, surname);
+        anyAdded = true;
+      }
+
+      if (anyAdded) {
+        counts[queryName]++;
       }
     }
-
-    counts[queryName]++;
   }
 
   // Build URL
