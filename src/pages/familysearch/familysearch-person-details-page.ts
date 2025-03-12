@@ -66,17 +66,29 @@ export class FamilySearchPersonDetailsPage implements Page {
   private injectTreeSearchLink(): void {
     let treeSearchLink = document.getElementById(FamilySearchPersonDetailsPage.TREE_SEARCH_LINK_ID) as HTMLAnchorElement;
     if (!treeSearchLink) {
-      const recordLinkLi = document.querySelector('li a[href*="/search/record/results"]')?.closest('li');
+      const recordLink = document.querySelector<HTMLAnchorElement>('li a[href*="/search/record/results"]');
+      if (!recordLink) {
+        return;
+      }
+
+      const recordLinkLi = recordLink.closest('li')!;
       if (!recordLinkLi) {
         return;
       }
 
-      const recordLinkSpan = Array.from(recordLinkLi.querySelectorAll('a[href*="/search/record/results"] span'))
+      const recordLinkSpan = Array.from(recordLink.querySelectorAll('span'))
         .find(span => span.textContent?.trim().length);
       if (!recordLinkSpan) {
         return;
       }
 
+      // Add gender to the search query
+      const gender = document.querySelector('span[data-testid="conclusion-gender"]')?.textContent;
+      if (!gender) {
+        return;
+      }
+
+      recordLink.href += `&q.sex=${gender}`;
       recordLinkSpan.textContent = 'FamilySearch - Records';
 
       const treeSearchLinkLi = recordLinkLi.cloneNode(true) as HTMLLIElement;
