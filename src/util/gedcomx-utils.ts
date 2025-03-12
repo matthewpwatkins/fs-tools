@@ -141,6 +141,23 @@ export function buildSearchUrlForPerson(entity: 'tree' | 'record', gx: GedcomX, 
         counts[queryName]++;
       }
     }
+
+    if (queryName === 'spouse') {
+      for (const fact of relationship.facts || []) {
+        if (fact.type === 'http://gedcomx.org/Marriage') {
+          if (fact.date) {
+            const year = getYear(fact.date);
+            if (year) {
+              searchParams.set('q.marriageLikeDate.from', (year - 2).toString());
+              searchParams.set('q.marriageLikeDate.to', (year + 2).toString());
+            }
+          }
+          if (fact.place) {
+            searchParams.set('q.marriageLikePlace', fact.place.normalized?.length ? fact.place.normalized[0].value : fact.place.original);
+          }
+        }
+      }
+    }
   }
 
   if (treeRef) {

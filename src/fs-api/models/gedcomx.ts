@@ -91,6 +91,7 @@ export interface PlaceReference {
   original: string;
   descriptionRef?: string;
   fields: Field[];
+  normalized: TextValue[];
 }
 
 export interface NamePart {
