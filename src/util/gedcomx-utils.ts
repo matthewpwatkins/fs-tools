@@ -9,6 +9,11 @@ export function buildSearchUrlForPerson(entity: 'tree' | 'record', gx: GedcomX):
   const focusedPersonReferenceId = gx.description?.substring(4);
   const focusedPerson = gx.persons!.find(person => person.id === focusedPersonReferenceId) || gx.persons!.find(person => person.principal)!;
 
+  // Gender
+  if (focusedPerson.gender?.type?.endsWith('ale')) {
+    searchParams.append('q.sex', focusedPerson.gender.type.split('/').pop()!);
+  }
+
   // Names
   let nameCounter = 0;
   for (const name of focusedPerson.names) {

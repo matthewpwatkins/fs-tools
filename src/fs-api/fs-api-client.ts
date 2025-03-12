@@ -10,6 +10,7 @@ export class FsApiClient {
   private static readonly CLIENT_ID = 'a02f100000TnN56AAF';
   // TODO: Use the user's actual IP address
   private static readonly IP_ADDRESS = '216.49.186.122';
+  private static readonly GEDCOMX_JSON_TYPE = 'application/x-gedcomx-v1+json';
   
   private sessionIdStorage: FsSessionIdStorage;
   private sessionId?: string;
@@ -29,24 +30,32 @@ export class FsApiClient {
     }
 
     console.log('No session ID found. Getting a new anonymous session ID from FamilySearch');
-    const res: TokenResponse = await this.postForm(false, '/service/ident/cis/cis-web/oauth2/v3/token', new URLSearchParams(), new URLSearchParams({
-      'grant_type': 'unauthenticated_session',
-      'ip_address': FsApiClient.IP_ADDRESS,
-      'client_id': FsApiClient.CLIENT_ID
-    }));
+    const res: TokenResponse = await this.request({
+      requireAuth: false,
+      baseUrl: FsApiClient.WEB_BASE_URL,
+      path: '/service/ident/cis/cis-web/oauth2/v3/token',
+      body: new URLSearchParams({
+        'grant_type': 'unauthenticated_session',
+        'ip_address': FsApiClient.IP_ADDRESS,
+        'client_id': FsApiClient.CLIENT_ID
+      })
+    });
 
     this.sessionId = res.access_token;
     this.sessionIdStorage.setSessionId(res.access_token);
   }
 
   public async getPerson(personId: string, includeRelatives?: boolean): Promise<GedcomX> {
-    return await this.request(true, `${FsApiClient.API_BASE_URL}/platform/tree/persons/${personId}`, new URLSearchParams({
-      'relatives': includeRelatives ? 'true' : 'false'
-    }), {
-      method: 'GET',
+    return await this.request({
+      requireAuth: true,
+      baseUrl: FsApiClient.API_BASE_URL,
+      path: `/platform/tree/persons/${personId}`,
       headers: {
-        'Accept': 'application/x-gedcomx-v1+json',
-      }
+        'Accept': FsApiClient.GEDCOMX_JSON_TYPE,
+      },
+      queryStringParams: new URLSearchParams({
+        'relatives': includeRelatives ? 'true' : 'false'
+      })
     });
   }
 
@@ -54,81 +63,102 @@ export class FsApiClient {
     const params = new URLSearchParams();
     params.append('useSLS', 'true');
 
-    return this.request(true, `/${ark}`, params, {
-      method: 'GET',
+    return this.request({
+      requireAuth: true,
+      baseUrl: FsApiClient.WEB_BASE_URL,
+      path: `/${ark}`,
       headers: {
-        'Accept': 'application/x-gedcomx-v1+json',
-      }
+        'Accept': FsApiClient.GEDCOMX_JSON_TYPE,
+      },
+      queryStringParams: params
     });
   }
 
   public async searchRecords(searchParams: URLSearchParams): Promise<SearchRecordsResponse> {
-    return this.get(true, '/service/search/hr/v2/personas', searchParams);
+    return this.request({
+      requireAuth: true,
+      baseUrl: FsApiClient.WEB_BASE_URL,
+      path: '/service/search/hr/v2/personas',
+      queryStringParams: searchParams
+    });
   }
 
   public async getAttachmentsForRecord(recordId: string): Promise<SourceAttachment[]> {
-    return this.get(true, '/service/tree/links/sources/attachments', new URLSearchParams({
-      'uri': `https://www.familysearch.org/ark:/61903/1:1:${recordId}`
-    }));
+    return this.request({
+      requireAuth: true,
+      baseUrl: FsApiClient.WEB_BASE_URL,
+      path: '/service/tree/links/sources/attachments',
+      queryStringParams: new URLSearchParams({
+        'uri': `https://www.familysearch.org/ark:/61903/1:1:${recordId}`
+      })
+    });
   }
 
   // #region Private helpers
 
-  private async get<T>(requireAuth: boolean, path: string, queryStringParams?: URLSearchParams): Promise<T> {
-    return this.request<T>(requireAuth, path, queryStringParams || new URLSearchParams(), {
-      method: 'GET'
-    });
-  }
-
-  private async postJson<T, U>(requireAuth: boolean, path: string, queryStringParams: URLSearchParams, body: T): Promise<U> {
-    return this.request<U>(requireAuth, path, queryStringParams, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: body ? JSON.stringify(body) : undefined
-    });
-  }
-
-  private async postForm<T>(requireAuth: boolean, path: string, queryStringParams: URLSearchParams, body: URLSearchParams): Promise<T> {
-    return this.request<T>(requireAuth, path, queryStringParams, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
-      body: body.toString()
-    });
-  }
-
-  private async request<T>(requireAuth: boolean, path: string, queryStringParams: URLSearchParams, options: Omit<RequestInit, 'url'>): Promise<T> {
+  private async request<T>({ requireAuth, baseUrl, path, headers = {}, body, queryStringParams }: RequestProps): Promise<T> {
     const baseHeaders: Record<string, string> = {
-      'Accept': 'application/json, text/plain, */*'
+      'Accept': 'application/json, text/plain, */*',
+      ...headers
     };
 
     if (requireAuth) {
       await this.auth(false);
       baseHeaders['Authorization'] = `Bearer ${this.sessionId!}`;
     }
-    
-    const url = path.startsWith('/') ? new URL(path, FsApiClient.WEB_BASE_URL) : new URL(path);
-    for (const [key, value] of queryStringParams) {
-      url.searchParams.append(key, value);
+
+    const url = new URL(path, baseUrl);
+    if (queryStringParams) {
+      for (const [key, value] of queryStringParams) {
+        url.searchParams.append(key, value);
+      }
     }
     
-    const response = await fetch(url.toString(), {
-      ...options,
-      headers: {
-        ...baseHeaders,
-        ...options.headers
+    // Prepare request options with default method and content type
+    const requestInit: RequestInit = {
+      headers: baseHeaders
+    };
+    
+    // Set method based on body presence
+    if (body) {
+      requestInit.method = 'POST';
+      
+      // Set appropriate content type based on body type
+      if (body instanceof URLSearchParams) {
+        requestInit.body = body.toString();
+        if (!baseHeaders['Content-Type']) {
+          baseHeaders['Content-Type'] = 'application/x-www-form-urlencoded';
+        }
+      } else if (typeof body === 'string') {
+        requestInit.body = body;
+      } else {
+        // Assume JSON object
+        requestInit.body = JSON.stringify(body);
+        if (!baseHeaders['Content-Type']) {
+          baseHeaders['Content-Type'] = 'application/json';
+        }
       }
-    });
+    } else {
+      requestInit.method = 'GET';
+    }
+
+    const response = await fetch(url.toString(), requestInit);
 
     if (!response.ok) {
-      throw new Error(`${options.method} request to ${url} failed with status ${response.status}`);
+      throw new Error(`${requestInit.method} request to ${url} failed with status ${response.status}`);
     }
 
     return response.json();
   }
 
   // #endregion
+}
+
+interface RequestProps {
+  requireAuth: boolean;
+  baseUrl: string;
+  path: string;
+  headers?: Record<string, string>;
+  body?: string | URLSearchParams | object;
+  queryStringParams?: URLSearchParams;
 }
