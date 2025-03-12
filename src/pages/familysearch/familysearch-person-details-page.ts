@@ -70,8 +70,8 @@ export class FamilySearchPersonDetailsPage implements Page {
   private async injectTreeSearchLink(): Promise<void> {
     let treeSearchLink = document.getElementById(FamilySearchPersonDetailsPage.TREE_SEARCH_LINK_ID) as HTMLAnchorElement;
     if (!treeSearchLink) {
-      const pid = document.location.pathname.split('/').pop();
-      if (!pid) {
+      const personId = document.location.pathname.split('/').pop();
+      if (!personId) {
         return;
       }
 
@@ -91,16 +91,16 @@ export class FamilySearchPersonDetailsPage implements Page {
         return;
       }
 
-      const gx = await this.fsApiClient.getPerson(pid, true);
+      const gx = await this.fsApiClient.getPerson(personId, true);
       console.log('GX', gx);
 
-      recordSearchLink.href = buildSearchUrlForPerson('record', gx).toString();
+      recordSearchLink.href = buildSearchUrlForPerson('record', gx, personId).toString();
       recordSearchSpan.textContent = 'FamilySearch - Records';
 
       const treeSearchLinkLi = recordSearchLi.cloneNode(true) as HTMLLIElement;
       treeSearchLink = treeSearchLinkLi.querySelector('a[href*="/search/record/results"]') as HTMLAnchorElement;
       treeSearchLink.id = FamilySearchPersonDetailsPage.TREE_SEARCH_LINK_ID;
-      treeSearchLink.href = buildSearchUrlForPerson('tree', gx).toString();
+      treeSearchLink.href = buildSearchUrlForPerson('tree', gx, personId).toString();
       const treeSearchLinkSpan = Array.from(treeSearchLink.querySelectorAll('span'))
         .find(span => span.textContent?.trim().length)!;
       treeSearchLinkSpan.textContent = 'FamilySearch - Potential Duplicates';

@@ -3,7 +3,7 @@ import { Name, Date, GedcomX } from "../fs-api/models/gedcomx";
 // https://www.familysearch.org/en/search/tree/results?treeref=L4Y4-F5G&q.birthLikePlace=South+Carolina%2C+United+States&q.deathLikePlace=Baltimore%2C+Baltimore%2C+Maryland%2C+United+States
 // &q.deathLikeDate.from=1948&q.deathLikeDate.to=1952
 
-export function buildSearchUrlForPerson(entity: 'tree' | 'record', gx: GedcomX): URL {
+export function buildSearchUrlForPerson(entity: 'tree' | 'record', gx: GedcomX, treeRef?: string): URL {
   const searchParams = new URLSearchParams();
 
   const focusedPersonReferenceId = gx.description?.substring(4);
@@ -141,6 +141,10 @@ export function buildSearchUrlForPerson(entity: 'tree' | 'record', gx: GedcomX):
         counts[queryName]++;
       }
     }
+  }
+
+  if (treeRef) {
+    searchParams.set('treeref', treeRef);
   }
 
   // Build URL
