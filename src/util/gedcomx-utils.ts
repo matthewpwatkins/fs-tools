@@ -10,8 +10,10 @@ export function buildSearchUrlForPerson(entity: 'tree' | 'record', gx: GedcomX, 
   const focusedPerson = gx.persons!.find(person => person.id === focusedPersonReferenceId) || gx.persons!.find(person => person.principal)!;
 
   // Gender
+  let focusedPersonGender;
   if (focusedPerson.gender?.type?.endsWith('ale')) {
-    searchParams.append('q.sex', focusedPerson.gender.type.split('/').pop()!);
+    focusedPersonGender = focusedPerson.gender.type.split('/').pop()!;
+    searchParams.append('q.sex', focusedPersonGender);
   }
 
   // Names
@@ -134,6 +136,12 @@ export function buildSearchUrlForPerson(entity: 'tree' | 'record', gx: GedcomX, 
       const surname = getName(name, 'http://gedcomx.org/Surname');
       if (surname) {
         searchParams.append(`q.${queryName}Surname${queryStringSuffix}`, surname);
+        // Add spouse surname as focused person AKA if not the husband
+        if (queryName === 'spouse' && focusedPersonGender !== 'Male') {
+          const suffix = nameCounter === 0 ? '' : `.${nameCounter}`;
+          searchParams.append('q.surname' + suffix, surname);
+          nameCounter++;
+        }
         anyAdded = true;
       }
 
@@ -142,7 +150,8 @@ export function buildSearchUrlForPerson(entity: 'tree' | 'record', gx: GedcomX, 
       }
     }
 
-    if (queryName === 'spouse') {
+    if (queryName === 'spouse') {      
+      // Add marriage information
       for (const fact of relationship.facts || []) {
         if (fact.type === 'http://gedcomx.org/Marriage') {
           if (fact.date) {
