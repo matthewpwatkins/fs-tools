@@ -2,7 +2,7 @@ import { SEARCH_ICON_HTML } from "../../icons";
 import { FsApiClient } from "../../fs-api/fs-api-client";
 import { Page } from "../../page";
 import { createFullTextSearchForm } from "../../util/familysearch-utils";
-import { buildSearchUrlForPerson } from "../../util/gedcomx-utils";
+import { buildSearchUrlForPerson, SearchDetailLevel } from "../../util/gedcomx-utils";
 
 export class FamilySearchRecordPage implements Page {
   private static readonly FS_TREE_SEARCH_LINK_ID = 'fs-tree-search-link';
@@ -109,7 +109,7 @@ export class FamilySearchRecordPage implements Page {
 
     const treeSearchButton = attachToTreeButton.cloneNode(true) as HTMLAnchorElement;
     treeSearchButton.innerHTML = `${SEARCH_ICON_HTML} Search Tree`;
-    treeSearchButton.href = buildSearchUrlForPerson('tree', record).toString();
+    treeSearchButton.href = buildSearchUrlForPerson('tree', record, undefined, SearchDetailLevel.StandardWithSpouse).toString();
     treeSearchButton.style.marginBottom = '10px';
 
     const treeSearchButtonContainer = document.createElement('div');
@@ -117,7 +117,7 @@ export class FamilySearchRecordPage implements Page {
 
     const recordSearchButton = attachToTreeButton.cloneNode(true) as HTMLAnchorElement;
     recordSearchButton.innerHTML = `${SEARCH_ICON_HTML} Search Records`;
-    recordSearchButton.href = buildSearchUrlForPerson('record', record).toString();
+    recordSearchButton.href = buildSearchUrlForPerson('record', record, undefined, SearchDetailLevel.StandardWithSpouse).toString();
     recordSearchButton.style.marginBottom = '10px';
 
     const recordSearchButtonContainer = document.createElement('div');

@@ -26,6 +26,7 @@ interface SearchModel {
 interface NameSearchParam {
   givenName?: string;
   surname?: string;
+  isAlternate?: boolean;
 }
 
 interface EventSearchParam {
@@ -43,6 +44,7 @@ interface RelatedPersonSearchParam {
 interface RelativeSearchFilterModel {
   givenName?: boolean;
   surname?: boolean;
+  alternateNames?: boolean;  // Add new property for alternate names
 }
 
 interface EventSearchFilterModel {
@@ -55,6 +57,7 @@ interface PrimaryPersonSearchFilterModel {
   gender?: boolean;
   givenName?: boolean;
   surname?: boolean;
+  alternateNames?: boolean;  // Add new property for alternate names
   birth?: EventSearchFilterModel;
   death?: EventSearchFilterModel;
 }
@@ -121,7 +124,7 @@ export const SearchDetailLevel = {
     relationships: {
       spouse: {
         givenName: true,
-        surname: true
+        surname: true,
       }
     }
   },
@@ -130,6 +133,7 @@ export const SearchDetailLevel = {
       gender: true,
       givenName: true,
       surname: true,
+      alternateNames: true,
       birth: {
         date: true,
         place: true
@@ -146,19 +150,23 @@ export const SearchDetailLevel = {
     relationships: {
       spouse: {
         givenName: true,
-        surname: true
+        surname: true,
+        alternateNames: true
       },
       father: {
         givenName: true,
-        surname: true
+        surname: true,
+        alternateNames: true
       },
       mother: {
         givenName: true,
-        surname: true
+        surname: true,
+        alternateNames: true
       },
       children: {
         givenName: true,
-        surname: true
+        surname: true,
+        alternateNames: true
       }
     }
   },
@@ -248,8 +256,12 @@ function addPersonToSearchModel(personModel: SearchModel['primaryPerson'], perso
           }
         }
       }
-
+      
       if (hasData) {
+        nameParam.isAlternate = personModel.names.length > 0;
+        if (nameParam.isAlternate && !detailLevel.alternateNames) {
+          continue;
+        }
         personModel.names.push(nameParam);
       }
     }
@@ -354,8 +366,9 @@ function addRelatedPersonToSearchModel(
   searchModel: SearchModel,
   person: Person,
   relationType: RelationshipType,
-  nameFilter: RelativeSearchFilterModel = { givenName: true, surname: true }
+  nameFilter: RelativeSearchFilterModel
 ): void {
+
   for (const name of person.names) {
     const relatedPerson: RelatedPersonSearchParam = {};
     let hasData = false;
@@ -378,6 +391,9 @@ function addRelatedPersonToSearchModel(
 
     if (hasData) {
       searchModel.relationships[relationType].push(relatedPerson);
+      if (!nameFilter.alternateNames) {
+        break;
+      }
     }
   }
 }
@@ -542,8 +558,12 @@ function hasEventData(event: EventSearchParam): boolean {
 }
 
 function cleanupNames(names: NameSearchParam[]): NameSearchParam[] {
-  // Put names with both parts before single names
+  // First, ensure primary names come first
   names.sort((a, b) => {
+    if (!a.isAlternate && b.isAlternate) return -1;
+    if (a.isAlternate && !b.isAlternate) return 1;
+    
+    // Then prioritize names with both parts
     if (a.givenName && a.surname && (!b.givenName || !b.surname)) {
       return -1;
     }
@@ -562,16 +582,32 @@ function cleanupNames(names: NameSearchParam[]): NameSearchParam[] {
     const givenName = name.givenName?.trim()?.replace(/\s+/g, ' ');
     const surname = name.surname?.trim()?.replace(/\s+/g, ' ');
 
+    // For primary names, always add them
+    if (!name.isAlternate) {
+      namesToKeep.push({ 
+        givenName: givenName, 
+        surname: surname,
+        isAlternate: false
+      });
+      
+      if (givenName) knownGivenNames.add(givenName.toLowerCase());
+      if (surname) knownSurnames.add(surname.toLowerCase());
+      continue;
+    }
+
+    // For alternate names, only add if they provide new information
     const isNewGivenName = givenName && !knownGivenNames.has(givenName.toLowerCase());
     const isNewSurname = surname && !knownSurnames.has(surname.toLowerCase());
+    
     if (isNewGivenName || isNewSurname) {
-      namesToKeep.push({ givenName: givenName, surname: surname });
-      if (isNewGivenName) {
-        knownGivenNames.add(givenName!);
-      }
-      if (isNewSurname) {
-        knownSurnames.add(surname!);
-      }
+      namesToKeep.push({ 
+        givenName: givenName, 
+        surname: surname,
+        isAlternate: true
+      });
+      
+      if (isNewGivenName) knownGivenNames.add(givenName!.toLowerCase());
+      if (isNewSurname) knownSurnames.add(surname!.toLowerCase());
     }
   }
 

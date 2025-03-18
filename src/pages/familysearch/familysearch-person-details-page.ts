@@ -1,6 +1,6 @@
 import { FsApiClient } from "../../fs-api/fs-api-client";
 import { Page } from "../../page";
-import { buildSearchUrlForPerson } from "../../util/gedcomx-utils";
+import { buildSearchUrlForPerson, SearchDetailLevel } from "../../util/gedcomx-utils";
 
 /**
  * Runs on all person detail pages.
@@ -94,13 +94,13 @@ export class FamilySearchPersonDetailsPage implements Page {
       const gx = await this.fsApiClient.getPerson(personId, true);
       console.log('GX', gx);
 
-      recordSearchLink.href = buildSearchUrlForPerson('record', gx, personId).toString();
+      recordSearchLink.href = buildSearchUrlForPerson('record', gx, personId, SearchDetailLevel.StandardWithSpouse).toString();
       recordSearchSpan.textContent = 'FamilySearch - Records';
 
       const treeSearchLinkLi = recordSearchLi.cloneNode(true) as HTMLLIElement;
       treeSearchLink = treeSearchLinkLi.querySelector('a[href*="/search/record/results"]') as HTMLAnchorElement;
       treeSearchLink.id = FamilySearchPersonDetailsPage.TREE_SEARCH_LINK_ID;
-      treeSearchLink.href = buildSearchUrlForPerson('tree', gx, personId).toString();
+      treeSearchLink.href = buildSearchUrlForPerson('tree', gx, personId, SearchDetailLevel.StandardWithSpouse).toString();
       const treeSearchLinkSpan = Array.from(treeSearchLink.querySelectorAll('span'))
         .find(span => span.textContent?.trim().length)!;
       treeSearchLinkSpan.textContent = 'FamilySearch - Potential Duplicates';

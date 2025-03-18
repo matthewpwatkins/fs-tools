@@ -48,7 +48,7 @@ describe('buildSearchUrlForPerson', () => {
     const result = buildSearchUrlForPerson('tree', frankWatkinGedcomX, undefined, SearchDetailLevel.StandardWithSpouse);
     
     // Standard with spouse includes name, gender, birth and death with places, and spouse details
-    expect(result.searchParams.size).toBe(17);
+    expect(result.searchParams.size).toBe(13);
     
     // Check primary person info
     expect(result.searchParams.get('q.givenName')).toBe('Frank Lamar');
@@ -64,12 +64,8 @@ describe('buildSearchUrlForPerson', () => {
     // Check spouse info
     expect(result.searchParams.get('q.spouseGivenName')).toBe('Alicegean');
     expect(result.searchParams.get('q.spouseSurname')).toBe('Bond');
-    expect(result.searchParams.get('q.spouseGivenName.1')).toBe('Alicegean');
-    expect(result.searchParams.get('q.spouseSurname.1')).toBe('Sawyer');
-    expect(result.searchParams.get('q.spouseGivenName.2')).toBe('Alice Jean');
-    expect(result.searchParams.get('q.spouseSurname.2')).toBe('Bond');
-    expect(result.searchParams.get('q.spouseGivenName.3')).toBe('Mona Belle');
-    expect(result.searchParams.get('q.spouseSurname.3')).toBe('Fuller');
+    expect(result.searchParams.get('q.spouseGivenName.1')).toBe('Mona Belle');
+    expect(result.searchParams.get('q.spouseSurname.1')).toBe('Fuller');
   });
 
   it('should include comprehensive information with Comprehensive detail level', () => {
