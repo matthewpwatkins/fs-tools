@@ -10,22 +10,17 @@ enum RelationshipType {
   Other = 'other'
 }
 
-// Define enum for event types
-enum EventType {
-  Birth = 'birth',
-  Death = 'death',
-  Marriage = 'marriage'
-}
-
 // Define interfaces for our interstitial search model
 interface SearchModel {
-  gender?: string;
-  names: NameSearchParam[];
-  [EventType.Birth]?: EventSearchParam;
-  [EventType.Death]?: EventSearchParam;
-  [EventType.Marriage]?: EventSearchParam;
-  relationships: Record<RelationshipType, RelatedPersonSearchParam[]>;
   treeRef?: string;
+  primaryPerson: {
+    gender?: string;
+    names: NameSearchParam[];
+    birth?: EventSearchParam;
+    death?: EventSearchParam;
+  };
+  marriage?: EventSearchParam;
+  relationships: Record<RelationshipType, RelatedPersonSearchParam[]>;
 }
 
 interface NameSearchParam {
@@ -44,14 +39,154 @@ interface RelatedPersonSearchParam {
   surname?: string;
 }
 
-export function buildSearchUrlForPerson(entity: 'tree' | 'record', gx: GedcomX, treeRef?: string): URL {
-  const focusedPersonReferenceId = gx.description?.substring(4);
-  const focusedPerson = gx.persons!.find(person => person.id === focusedPersonReferenceId) || gx.persons!.find(person => person.principal)!;
+// Name filter model for relatives
+interface RelativeSearchFilterModel {
+  givenName?: boolean;
+  surname?: boolean;
+}
 
-  // Create search model
+interface EventSearchFilterModel {
+  date?: boolean;
+  place?: boolean;
+}
+
+// Primary person filter model with more details
+interface PrimaryPersonSearchFilterModel {
+  gender?: boolean;
+  givenName?: boolean;
+  surname?: boolean;
+  birth?: EventSearchFilterModel;
+  death?: EventSearchFilterModel;
+}
+
+// New simplified person search model with more granular control
+export interface PersonSearchFilterModel {
+  primaryPerson: PrimaryPersonSearchFilterModel;
+  marriage?: EventSearchFilterModel;
+  relationships: {
+    spouse?: RelativeSearchFilterModel;
+    father?: RelativeSearchFilterModel;
+    mother?: RelativeSearchFilterModel;
+    children?: RelativeSearchFilterModel;
+  };
+}
+
+// Define preset filters with more granular name controls
+export const SearchDetailLevel = {
+  Minimal: {
+    primaryPerson: {
+      givenName: true,
+      surname: true,
+    },
+  },
+  Basic: {
+    primaryPerson: {
+      gender: true,
+      givenName: true,
+      surname: true,
+      birth: {
+        date: true,
+      },
+    },
+  },
+  Standard: {
+    primaryPerson: {
+      gender: true,
+      givenName: true,
+      surname: true,
+      birth: {
+        date: true,
+        place: true
+      },
+      death: {
+        date: true,
+        place: true
+      },
+    }
+  },
+  StandardWithSpouse: {
+    primaryPerson: {
+      gender: true,
+      givenName: true,
+      surname: true,
+      birth: {
+        date: true,
+        place: true
+      },
+      death: {
+        date: true,
+        place: true
+      },
+    },
+    relationships: {
+      spouse: {
+        givenName: true,
+        surname: true
+      }
+    }
+  },
+  Comprehensive: {
+    primaryPerson: {
+      gender: true,
+      givenName: true,
+      surname: true,
+      birth: {
+        date: true,
+        place: true
+      },
+      death: {
+        date: true,
+        place: true
+      },
+    },
+    marriage: {
+      date: true,
+      place: true
+    },
+    relationships: {
+      spouse: {
+        givenName: true,
+        surname: true
+      },
+      father: {
+        givenName: true,
+        surname: true
+      },
+      mother: {
+        givenName: true,
+        surname: true
+      },
+      children: {
+        givenName: true,
+        surname: true
+      }
+    }
+  },
+} as const;
+
+// Function overloads
+export function buildSearchUrlForPerson(entity: 'tree' | 'record', gx: GedcomX, treeRef?: string): URL;
+export function buildSearchUrlForPerson(entity: 'tree' | 'record', gx: GedcomX, treeRef: string | undefined, detailLevel: typeof SearchDetailLevel.Comprehensive): URL;
+export function buildSearchUrlForPerson(entity: 'tree' | 'record', gx: GedcomX, treeRef: string | undefined, detailLevel: Partial<PersonSearchFilterModel>): URL;
+
+export function buildSearchUrlForPerson(
+  entity: 'tree' | 'record',
+  gx: GedcomX,
+  treeRef?: string,
+  detailLevel: Partial<PersonSearchFilterModel> = SearchDetailLevel.Comprehensive
+): URL {
+  const searchModel = createSearchModel(gx, treeRef, detailLevel);
+  const searchURL = new URL(`https://www.familysearch.org/en/search/${entity}/results`);
+  searchURL.search = convertToURLSearchParams(searchModel).toString();
+  return searchURL;
+}
+
+function createSearchModel(gx: GedcomX, treeRef: string | undefined, detailLevel: Partial<PersonSearchFilterModel>): SearchModel {
   const searchModel: SearchModel = {
     treeRef: treeRef,
-    names: [],
+    primaryPerson: {
+      names: []
+    },
     relationships: {
       [RelationshipType.Spouse]: [],
       [RelationshipType.Father]: [],
@@ -60,99 +195,118 @@ export function buildSearchUrlForPerson(entity: 'tree' | 'record', gx: GedcomX, 
     }
   };
 
-  // Add person data to search model
-  addPersonToSearchModel(searchModel, focusedPerson);
-  
-  // Add relationships to search model
-  addRelationshipsToSearchModel(searchModel, gx, focusedPerson);
+  const focusedPersonReferenceId = gx.description?.substring(4);
+  const focusedPerson = gx.persons!.find(person => person.id === focusedPersonReferenceId) || gx.persons!.find(person => person.principal)!;
+
+  // Add person data to search model based on detail level
+  if (detailLevel.primaryPerson) {
+    addPersonToSearchModel(searchModel.primaryPerson, focusedPerson, detailLevel.primaryPerson);
+  }
+
+  // Add relationships to search model based on detail level
+  if (detailLevel.relationships) {
+    addRelationshipsToSearchModel(searchModel, gx, focusedPerson, detailLevel.relationships, detailLevel.marriage);
+  }
 
   cleanupSearchModel(searchModel);
 
-  // Convert search model to URL
-  const searchURL = new URL(`https://www.familysearch.org/en/search/${entity}/results`);
-  searchURL.search = convertToURLSearchParams(searchModel).toString();
-  return searchURL;
+  return searchModel;
 }
 
-function addPersonToSearchModel(searchModel: SearchModel, person: Person): void {
-  // Add gender
-  if (person.gender?.type?.endsWith('ale')) {
-    searchModel.gender = person.gender.type.split('/').pop()!;
+function addPersonToSearchModel(personModel: SearchModel['primaryPerson'], person: Person, detailLevel: PrimaryPersonSearchFilterModel): void {
+  // Add gender if specified in detail level
+  if (detailLevel.gender && person.gender?.type?.endsWith('ale')) {
+    personModel.gender = person.gender.type.split('/').pop()!;
   }
 
-  // Add names
-  for (const name of person.names) {
-    const nameParam: NameSearchParam = {};
-    let hasData = false;
-    
-    const givenName = getName(name, 'http://gedcomx.org/Given');
-    if (givenName) {
-      nameParam.givenName = givenName;
-      hasData = true;
-    }
+  // Add names if specified in detail level
+  if (detailLevel.givenName || detailLevel.surname) {
+    for (const name of person.names) {
+      const nameParam: NameSearchParam = {};
+      let hasData = false;
 
-    const surname = getName(name, 'http://gedcomx.org/Surname');
-    if (surname) {
-      nameParam.surname = surname;
-      hasData = true;
-    }
+      if (detailLevel.surname) {
+        const surname = getName(name, 'http://gedcomx.org/Surname');
+        if (surname) {
+          nameParam.surname = surname;
+          hasData = true;
+        }
+      }
 
-    if (!hasData) {
-      const birthName = getName(name, 'http://gedcomx.org/BirthName');
-      if (birthName?.length) {
-        nameParam.givenName = birthName;
-        hasData = true;
+      if (detailLevel.givenName) {
+        const givenName = getName(name, 'http://gedcomx.org/Given');
+        if (givenName) {
+          nameParam.givenName = givenName;
+          hasData = true;
+        }
+
+        if (!hasData) {
+          const birthName = getName(name, 'http://gedcomx.org/BirthName');
+          if (birthName?.length) {
+            nameParam.givenName = birthName;
+            hasData = true;
+          }
+        }
+      }
+
+      if (hasData) {
+        personModel.names.push(nameParam);
       }
     }
-
-    if (hasData) {
-      searchModel.names.push(nameParam);
-    }
   }
 
-  // Add facts
+  // Add facts if birth or death is specified in detail level
   for (const fact of person.facts || []) {
-    if (fact.type === 'http://gedcomx.org/Birth' || fact.type === 'http://gedcomx.org/Christening') {
-      addEventToSearchModel(searchModel, EventType.Birth, fact);
-    } else if (fact.type === 'http://gedcomx.org/Death') {
-      addEventToSearchModel(searchModel, EventType.Death, fact);
-    } else if (fact.type === 'http://gedcomx.org/Burial' && !searchModel[EventType.Death]) {
-      addEventToSearchModel(searchModel, EventType.Death, fact);
+    if ((detailLevel.birth && (fact.type === 'http://gedcomx.org/Birth' || fact.type === 'http://gedcomx.org/Christening'))) {
+      personModel.birth = createEventParam(fact, detailLevel.birth);
+    } else if (detailLevel.death && fact.type === 'http://gedcomx.org/Death') {
+      personModel.death = createEventParam(fact, detailLevel.death);
+    } else if (detailLevel.death && fact.type === 'http://gedcomx.org/Burial' && !personModel.death) {
+      personModel.death = createEventParam(fact, detailLevel.death);
     }
   }
 }
 
-function addEventToSearchModel(searchModel: SearchModel, eventType: EventType, fact: Fact): void {
-  if (!searchModel[eventType]) {
-    searchModel[eventType] = {};
-  }
-  
+function createEventParam(fact: Fact, eventFilter: EventSearchFilterModel | undefined): EventSearchParam | undefined {
+  const eventParam: EventSearchParam = {};
+  let hasAnyData = false;
+
   // Add date
-  if (fact.date) {
+  if (eventFilter?.date && fact.date) {
     const year = getYear(fact.date);
     if (year) {
-      searchModel[eventType]!.yearFrom = year - 2;
-      searchModel[eventType]!.yearTo = year + 2;
+      eventParam.yearFrom = year - 2;
+      eventParam.yearTo = year + 2;
+      hasAnyData = true;
     }
   }
 
   // Add place
-  if (fact.place) {
+  if (eventFilter?.place && fact.place) {
     const place = getPlace(fact);
     if (place) {
-      searchModel[eventType]!.place = place;
+      eventParam.place = place;
+      hasAnyData = true;
     }
   }
+
+  return hasAnyData ? eventParam : undefined;
 }
 
 function getPlace(fact: Fact): string | undefined {
   if (!fact.place) return undefined;
-  
-  return fact.place.fields?.find(field => field.type === 'http://gedcomx.org/Place')?.values?.find(value => 
+
+  return fact.place.fields?.find(field => field.type === 'http://gedcomx.org/Place')?.values?.find(value =>
     value.type === 'http://gedcomx.org/Interpreted')?.text || fact.place.original;
 }
 
-function addRelationshipsToSearchModel(searchModel: SearchModel, gx: GedcomX, focusedPerson: Person): void {
+function addRelationshipsToSearchModel(
+  searchModel: SearchModel,
+  gx: GedcomX,
+  focusedPerson: Person,
+  relationshipFilter: PersonSearchFilterModel['relationships'],
+  marriageFilter: EventSearchFilterModel | undefined
+): void {
   const importantRelationships = gx.relationships?.filter(r => (
     r.person1.resourceId === focusedPerson.id || r.person2.resourceId === focusedPerson.id
   )) || [];
@@ -160,50 +314,66 @@ function addRelationshipsToSearchModel(searchModel: SearchModel, gx: GedcomX, fo
   for (const relationship of importantRelationships) {
     const otherPerson = getOtherPersonInRelationship(relationship, focusedPerson.id!, gx);
     const relationType = getRelationType(relationship, focusedPerson, otherPerson);
-    
-    // Add name information for the related person
-    addRelatedPersonToSearchModel(searchModel, otherPerson, relationType);
-    
-    // Add marriage information
-    if (relationType === RelationshipType.Spouse) {
-      for (const fact of relationship.facts || []) {
-        if (fact.type === 'http://gedcomx.org/Marriage') {
-          addEventToSearchModel(searchModel, EventType.Marriage, fact);
+
+    // Check if this relationship type should be included based on filter
+    const nameFilter =
+      relationType === RelationshipType.Spouse ? relationshipFilter.spouse :
+        relationType === RelationshipType.Father ? relationshipFilter.father :
+          relationType === RelationshipType.Mother ? relationshipFilter.mother :
+            relationType === RelationshipType.Other ? relationshipFilter.children :
+              undefined;
+
+    if (nameFilter) {
+      // Add name information for the related person with granular control
+      addRelatedPersonToSearchModel(searchModel, otherPerson, relationType, nameFilter);
+
+      // Add marriage information if specified in filter and it's a spouse relationship
+      if (relationType === RelationshipType.Spouse) {
+        for (const fact of relationship.facts || []) {
+          if (fact.type === 'http://gedcomx.org/Marriage') {
+            searchModel.marriage = createEventParam(fact, marriageFilter);
+            break;
+          }
         }
       }
     }
   }
 
   // Handle spouse surnames as AKA for female focused person
-  if (searchModel.gender === 'Female') {
+  if (searchModel.primaryPerson.gender === 'Female' && relationshipFilter.spouse?.surname) {
     for (const spouse of searchModel.relationships[RelationshipType.Spouse]) {
       if (spouse.surname) {
         // Add spouse surname as an alias for the focused person
-        searchModel.names.push({ surname: spouse.surname });
+        searchModel.primaryPerson.names.push({ surname: spouse.surname });
       }
     }
   }
 }
 
 function addRelatedPersonToSearchModel(
-  searchModel: SearchModel, 
-  person: Person, 
-  relationType: RelationshipType
+  searchModel: SearchModel,
+  person: Person,
+  relationType: RelationshipType,
+  nameFilter: RelativeSearchFilterModel = { givenName: true, surname: true }
 ): void {
   for (const name of person.names) {
     const relatedPerson: RelatedPersonSearchParam = {};
     let hasData = false;
 
-    const givenName = getName(name, 'http://gedcomx.org/Given');
-    if (givenName) {
-      relatedPerson.givenName = givenName;
-      hasData = true;
+    if (nameFilter.givenName) {
+      const givenName = getName(name, 'http://gedcomx.org/Given');
+      if (givenName) {
+        relatedPerson.givenName = givenName;
+        hasData = true;
+      }
     }
 
-    const surname = getName(name, 'http://gedcomx.org/Surname');
-    if (surname) {
-      relatedPerson.surname = surname;
-      hasData = true;
+    if (nameFilter.surname) {
+      const surname = getName(name, 'http://gedcomx.org/Surname');
+      if (surname) {
+        relatedPerson.surname = surname;
+        hasData = true;
+      }
     }
 
     if (hasData) {
@@ -217,7 +387,7 @@ function getRelationType(relationship: Relationship, focusedPerson: Person, othe
     return RelationshipType.Spouse;
   }
 
-  const isPerson1 = relationship.person1.resourceId === focusedPerson.id;  
+  const isPerson1 = relationship.person1.resourceId === focusedPerson.id;
   if (relationship.type === 'http://gedcomx.org/ParentChild' && !isPerson1 && otherPerson.gender?.type !== 'http://gedcomx.org/Unknown') {
     if (otherPerson.gender!.type === 'http://gedcomx.org/Male') {
       return RelationshipType.Father;
@@ -256,43 +426,43 @@ function convertToURLSearchParams(searchModel: SearchModel): URLSearchParams {
   const searchParams = new URLSearchParams();
 
   // Add gender
-  if (searchModel.gender) {
-    searchParams.append('q.sex', searchModel.gender);
+  if (searchModel.primaryPerson.gender) {
+    searchParams.append('q.sex', searchModel.primaryPerson.gender);
   }
 
   // Add names - using the common function
-  addIndexedNameParameters(searchParams, 'q.', searchModel.names);
+  addIndexedNameParameters(searchParams, 'q.', searchModel.primaryPerson.names);
 
   // Add birth
-  if (searchModel[EventType.Birth]) {
-    if (searchModel[EventType.Birth].yearFrom && searchModel[EventType.Birth].yearTo) {
-      searchParams.set('q.birthLikeDate.from', searchModel[EventType.Birth].yearFrom.toString());
-      searchParams.set('q.birthLikeDate.to', searchModel[EventType.Birth].yearTo.toString());
+  if (searchModel.primaryPerson.birth) {
+    if (searchModel.primaryPerson.birth.yearFrom && searchModel.primaryPerson.birth.yearTo) {
+      searchParams.set('q.birthLikeDate.from', searchModel.primaryPerson.birth.yearFrom.toString());
+      searchParams.set('q.birthLikeDate.to', searchModel.primaryPerson.birth.yearTo.toString());
     }
-    if (searchModel[EventType.Birth].place) {
-      searchParams.set('q.birthLikePlace', searchModel[EventType.Birth].place);
+    if (searchModel.primaryPerson.birth.place) {
+      searchParams.set('q.birthLikePlace', searchModel.primaryPerson.birth.place);
     }
   }
 
   // Add death
-  if (searchModel[EventType.Death]) {
-    if (searchModel[EventType.Death].yearFrom && searchModel[EventType.Death].yearTo) {
-      searchParams.set('q.deathLikeDate.from', searchModel[EventType.Death].yearFrom.toString());
-      searchParams.set('q.deathLikeDate.to', searchModel[EventType.Death].yearTo.toString());
+  if (searchModel.primaryPerson.death) {
+    if (searchModel.primaryPerson.death.yearFrom && searchModel.primaryPerson.death.yearTo) {
+      searchParams.set('q.deathLikeDate.from', searchModel.primaryPerson.death.yearFrom.toString());
+      searchParams.set('q.deathLikeDate.to', searchModel.primaryPerson.death.yearTo.toString());
     }
-    if (searchModel[EventType.Death].place) {
-      searchParams.set('q.deathLikePlace', searchModel[EventType.Death].place);
+    if (searchModel.primaryPerson.death.place) {
+      searchParams.set('q.deathLikePlace', searchModel.primaryPerson.death.place);
     }
   }
 
   // Add marriage
-  if (searchModel[EventType.Marriage]) {
-    if (searchModel[EventType.Marriage].yearFrom && searchModel[EventType.Marriage].yearTo) {
-      searchParams.set('q.marriageLikeDate.from', searchModel[EventType.Marriage].yearFrom.toString());
-      searchParams.set('q.marriageLikeDate.to', searchModel[EventType.Marriage].yearTo.toString());
+  if (searchModel.marriage) {
+    if (searchModel.marriage.yearFrom && searchModel.marriage.yearTo) {
+      searchParams.set('q.marriageLikeDate.from', searchModel.marriage.yearFrom.toString());
+      searchParams.set('q.marriageLikeDate.to', searchModel.marriage.yearTo.toString());
     }
-    if (searchModel[EventType.Marriage].place) {
-      searchParams.set('q.marriageLikePlace', searchModel[EventType.Marriage].place);
+    if (searchModel.marriage.place) {
+      searchParams.set('q.marriageLikePlace', searchModel.marriage.place);
     }
   }
 
@@ -333,33 +503,42 @@ function getYear(date: Date): number | undefined {
   if (date.formal) {
     return parseInt(date.formal.split('-')[0]);
   }
-  
+
   for (const field of date.fields || []) {
     if (field.type === 'http://gedcomx.org/Year') {
       return parseInt(field.values[0].text);
     }
   }
-  
+
   return undefined;
 }
 
 function cleanupSearchModel(searchModel: SearchModel) {
   // Remove empty name entries
-  searchModel.names = cleanupNames(searchModel.names);
+  searchModel.primaryPerson.names = cleanupNames(searchModel.primaryPerson.names);
 
   // Remove empty relationship entries
   for (const key in searchModel.relationships) {
     searchModel.relationships[key as RelationshipType] = cleanupNames(searchModel.relationships[key as RelationshipType]);
   }
 
-  // Remove empty event entries
-  for (const eventType of [EventType.Birth, EventType.Death, EventType.Marriage]) {
-    if (searchModel[eventType]) {
-      if (!searchModel[eventType]!.yearFrom && !searchModel[eventType]!.yearTo && !searchModel[eventType]!.place) {
-        delete searchModel[eventType];
-      }
-    }
+  // Remove empty event entries for primary person
+  if (searchModel.primaryPerson.birth && !hasEventData(searchModel.primaryPerson.birth)) {
+    delete searchModel.primaryPerson.birth;
   }
+
+  if (searchModel.primaryPerson.death && !hasEventData(searchModel.primaryPerson.death)) {
+    delete searchModel.primaryPerson.death;
+  }
+
+  // Remove empty marriage data
+  if (searchModel.marriage && !hasEventData(searchModel.marriage)) {
+    delete searchModel.marriage;
+  }
+}
+
+function hasEventData(event: EventSearchParam): boolean {
+  return !!(event.yearFrom || event.yearTo || event.place);
 }
 
 function cleanupNames(names: NameSearchParam[]): NameSearchParam[] {
