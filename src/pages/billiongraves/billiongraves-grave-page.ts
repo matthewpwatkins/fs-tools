@@ -14,6 +14,10 @@ export class BillionGravesGravePage implements Page {
       && url.pathname.startsWith('/grave/');
   }
 
+  requiresAuthenticatedSessionId(): boolean {
+    return false;
+  }
+
   async onPageEnter(): Promise<void> {
     console.log('BillionGravesGravePage - onPageEnter');
   }

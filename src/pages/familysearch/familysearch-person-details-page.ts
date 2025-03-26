@@ -22,6 +22,10 @@ export class FamilySearchPersonDetailsPage implements Page {
       && url.pathname.indexOf('/tree/person/') >= 0;
   }
 
+  requiresAuthenticatedSessionId(): boolean {
+    return false;
+  }
+
   async onPageEnter(): Promise<void> {
     console.log('FamilySearchPersonDetailsPage - onPageEnter');
   }

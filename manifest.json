@@ -21,11 +21,29 @@
   },
   "content_scripts": [
     {
-      "js": ["main.js"],
+      "js": [
+        "main.js"
+      ],
       "matches": [
         "https://*.familysearch.org/*",
         "https://*.findagrave.com/*"
-      ]      
+      ]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "icons/icon-16.png",
+        "icons/icon-32.png",
+        "icons/icon-48.png",
+        "icons/icon-128.png",
+        "icons/icon-256.png",
+        "icons/icon-512.png"
+      ],
+      "matches": [
+        "https://*.familysearch.org/*",
+        "https://*.findagrave.com/*"
+      ]
     }
   ]
 }

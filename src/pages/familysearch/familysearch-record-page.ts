@@ -20,6 +20,10 @@ export class FamilySearchRecordPage implements Page {
       && url.pathname.indexOf('/ark:/61903/1:1') >= 0;
   }
 
+  requiresAuthenticatedSessionId(): boolean {
+    return false;
+  }
+
   async onPageEnter(): Promise<void> {
     console.log('FamilySearchRecordPage - onPageEnter');
   }

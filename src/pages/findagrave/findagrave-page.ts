@@ -38,6 +38,10 @@ export class FindAGravePage implements Page {
     return url.hostname.toLowerCase().endsWith('findagrave.com');
   }
 
+  requiresAuthenticatedSessionId(): boolean {
+    return true;
+  }
+
   async onPageEnter(): Promise<void> {
     console.log('FindAGravePage - onPageEnter');
   }
@@ -233,12 +237,14 @@ export class FindAGravePage implements Page {
 
     // Fetch the person ID if needed
     let attachments: SourceAttachment[] | undefined = undefined;
-    try {
-      if (forceRefresh || !memorialElementData.fsPersonId && memorialElementData.fsRecordId !== FindAGravePage.FS_ID_NONE) {
-        attachments = await this.fsApiClient.getAttachmentsForRecord(memorialElementData.fsRecordId);
+    if (await this.fsApiClient.isAuthenticated()) {
+      try {
+        if (forceRefresh || !memorialElementData.fsPersonId && memorialElementData.fsRecordId !== FindAGravePage.FS_ID_NONE) {
+          attachments = await this.fsApiClient.getAttachmentsForRecord(memorialElementData.fsRecordId);
+        }
+      } catch (e) {
+        console.error('Error fetching person ID. The session ID is probably unauthed', e);
       }
-    } catch (e) {
-      console.error('Error fetching person ID. The session ID is probably unauthed', e);
     }
 
     if (attachments) {

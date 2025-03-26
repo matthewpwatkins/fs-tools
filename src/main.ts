@@ -9,12 +9,12 @@ import { FamilySearchRecordPage } from "./pages/familysearch/familysearch-record
 import { FamilySearchSearchResultsPage } from "./pages/familysearch/familysearch-search-results-page";
 import { FindAGravePage } from "./pages/findagrave/findagrave-page";
 import { ChromeExtensionFsSessionIdStorage } from "./fs-api/chrome-extension-fs-session-id-storage";
+import { Toast } from "./ui/toast";
 
 async function main() {
   const sessionStorage = new ChromeExtensionFsSessionIdStorage();
-  const sessionID = await sessionStorage.getSessionId();
-  console.log(`MAIN. SessionID = ${sessionID}`);
-
+  console.log(`Authenticated session ID: ${await sessionStorage.getAuthenticatedSessionId()}`);
+  console.log(`Anonymous session ID: ${await sessionStorage.getAnonymousSessionId()}`);
   const fsApiClient = new FsApiClient(sessionStorage);
   const ALL_PAGES: Page[] = [
     // new BillionGravesGravePage(),
@@ -66,6 +66,13 @@ async function main() {
           if (!matchingPages.has(page)) {
             await page.onPageEnter();
             matchingPages.add(page);
+          }
+          if (page.requiresAuthenticatedSessionId() && !(await fsApiClient.isAuthenticated())) {
+            Toast.show({
+              title: 'Authentication Required',
+              message: 'Some FS Tools functionality may be limited on this page. Please sign in to FamilySearch.org, then refresh this page to enable all features.',
+              url: 'https://ident.familysearch.org/en/identity/login/?state=https://www.familysearch.org/en/united-states/',
+            });
           }
         } else {
           if (matchingPages.has(page)) {

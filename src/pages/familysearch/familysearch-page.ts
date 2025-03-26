@@ -8,7 +8,7 @@ import { getFamilySearchSessionIdFromCookie } from "../../util/cookie-utils";
  */
 export class FamilySearchPage implements Page {
   private readonly sessionIdStorage: FsSessionIdStorage;
-  private sessionId?: string;
+  private authenticatedSessionId?: string;
 
   constructor(sessionIdStorage: FsSessionIdStorage) {
     this.sessionIdStorage = sessionIdStorage;
@@ -18,9 +18,13 @@ export class FamilySearchPage implements Page {
     return url.hostname.toLowerCase().endsWith('familysearch.org');
   }
 
+  requiresAuthenticatedSessionId(): boolean {
+    return false;
+  }
+
   async onPageEnter(): Promise<void> {
     console.log('FamilySearchPage - onPageEnter');
-    this.updateSessionId();
+    await this.updateSessionId();
   }
 
   async onPageExit(): Promise<void> {
@@ -31,11 +35,11 @@ export class FamilySearchPage implements Page {
     this.updateSessionId();
   }
 
-  private updateSessionId(): void {
+  private async updateSessionId(): Promise<void> {
     const currentSessionId = getFamilySearchSessionIdFromCookie();
-    if (currentSessionId && currentSessionId !== this.sessionId) {
-      this.sessionId = currentSessionId;
-      this.sessionIdStorage.setSessionId(this.sessionId);
+    if (currentSessionId && currentSessionId !== this.authenticatedSessionId) {
+      this.authenticatedSessionId = currentSessionId;
+      await this.sessionIdStorage.setAuthenticatedSessionId(this.authenticatedSessionId);
     }
   }
 }

@@ -14,6 +14,10 @@ export class FamilySearchFilmPage implements Page {
       && url.pathname.indexOf('/search/film/') >= 0;
   }
 
+  requiresAuthenticatedSessionId(): boolean {
+    return false;
+  }
+
   async onPageEnter(): Promise<void> {
     console.log('FamilySearchFilmPage - onPageEnter');
   }

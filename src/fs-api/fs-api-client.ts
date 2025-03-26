@@ -4,6 +4,13 @@ import { SearchRecordsResponse } from "./models/search-records-response";
 import { SourceAttachment } from "./models/source-attachment";
 import { GedcomX } from "./models/gedcomx";
 
+// enum for auth level
+enum AuthLevel {
+  NONE,
+  ANONYMOUS,
+  AUTHENTICATED
+};
+
 export class FsApiClient {
   private static readonly WEB_BASE_URL = 'https://www.familysearch.org';
   private static readonly API_BASE_URL = 'https://api.familysearch.org';
@@ -13,25 +20,39 @@ export class FsApiClient {
   private static readonly GEDCOMX_JSON_TYPE = 'application/x-gedcomx-v1+json';
   
   private sessionIdStorage: FsSessionIdStorage;
-  private sessionId?: string;
+  private anonymousSessionId?: string;
+  private authenticatedSessionId?: string;
+  
+  /**
+   * Indicates whether the client has an authenticated session
+   */
+  public async isAuthenticated(): Promise<boolean> {
+    if (!this.authenticatedSessionId) {
+      this.authenticatedSessionId = await this.sessionIdStorage.getAuthenticatedSessionId();
+    }    
+    return !!this.authenticatedSessionId;
+  }
   
   constructor(fsSessionIdStorage: FsSessionIdStorage) {
     this.sessionIdStorage = fsSessionIdStorage;
+    this.sessionIdStorage.onAuthenticatedSessionIdChange((sessionId) => {
+      console.log(`Authenticated session ID changed to ${sessionId}`);
+      this.authenticatedSessionId = sessionId;
+    });
+    this.sessionIdStorage.onAnonymousSessionIdChange((sessionId) => {
+      console.log(`Authenticated session ID changed to ${sessionId}`);
+      this.anonymousSessionId = sessionId;
+    });
   }
 
-  public async auth(forceNewToken: boolean): Promise<void> {
-    if (!forceNewToken) {
-      if (!this.sessionId) {
-        this.sessionId = await this.sessionIdStorage.getSessionId();
-      }
-      if (this.sessionId) {
-        return;
-      }
-    }
-
-    console.log('No session ID found. Getting a new anonymous session ID from FamilySearch');
+  /**
+   * Gets or refreshes the anonymous session
+   * @param forceNewToken Force getting a new token even if one exists
+   */
+  public async fetchNewAnonymousSessionId(): Promise<void> {
+    console.log('Getting a new anonymous session ID from FamilySearch');
     const res: TokenResponse = await this.request({
-      requireAuth: false,
+      authLevel: AuthLevel.NONE,
       baseUrl: FsApiClient.WEB_BASE_URL,
       path: '/service/ident/cis/cis-web/oauth2/v3/token',
       body: new URLSearchParams({
@@ -41,13 +62,13 @@ export class FsApiClient {
       })
     });
 
-    this.sessionId = res.access_token;
-    this.sessionIdStorage.setSessionId(res.access_token);
+    this.anonymousSessionId = res.access_token;
+    await this.sessionIdStorage.setAnonymousSessionId(res.access_token);
   }
 
   public async getPerson(personId: string, includeRelatives?: boolean): Promise<GedcomX> {
     return await this.request({
-      requireAuth: true,
+      authLevel: AuthLevel.NONE,
       baseUrl: FsApiClient.API_BASE_URL,
       path: `/platform/tree/persons/${personId}`,
       headers: {
@@ -64,7 +85,7 @@ export class FsApiClient {
     params.append('useSLS', 'true');
 
     return this.request({
-      requireAuth: true,
+      authLevel: AuthLevel.NONE,
       baseUrl: FsApiClient.WEB_BASE_URL,
       path: `/${ark}`,
       headers: {
@@ -76,7 +97,7 @@ export class FsApiClient {
 
   public async searchRecords(searchParams: URLSearchParams): Promise<SearchRecordsResponse> {
     return this.request({
-      requireAuth: true,
+      authLevel: AuthLevel.ANONYMOUS,
       baseUrl: FsApiClient.WEB_BASE_URL,
       path: '/service/search/hr/v2/personas',
       queryStringParams: searchParams
@@ -85,7 +106,7 @@ export class FsApiClient {
 
   public async getAttachmentsForRecord(recordId: string): Promise<SourceAttachment[]> {
     return this.request({
-      requireAuth: true,
+      authLevel: AuthLevel.AUTHENTICATED,
       baseUrl: FsApiClient.WEB_BASE_URL,
       path: '/service/tree/links/sources/attachments',
       queryStringParams: new URLSearchParams({
@@ -96,15 +117,35 @@ export class FsApiClient {
 
   // #region Private helpers
 
-  private async request<T>({ requireAuth, baseUrl, path, headers = {}, body, queryStringParams }: RequestProps): Promise<T> {
+  private async request<T>({ authLevel, baseUrl, path, headers = {}, body, queryStringParams, allowRetry = true }: RequestProps): Promise<T> {    
     const baseHeaders: Record<string, string> = {
       'Accept': 'application/json, text/plain, */*',
       ...headers
     };
 
-    if (requireAuth) {
-      await this.auth(false);
-      baseHeaders['Authorization'] = `Bearer ${this.sessionId!}`;
+    switch (authLevel) {
+      case AuthLevel.NONE:
+        break;
+      case AuthLevel.ANONYMOUS:
+        if (!this.anonymousSessionId) {
+          this.anonymousSessionId = await this.sessionIdStorage.getAnonymousSessionId();
+        }
+        if (!this.anonymousSessionId) {
+          await this.fetchNewAnonymousSessionId();
+        }
+        baseHeaders['Authorization'] = `Bearer ${this.authenticatedSessionId || this.anonymousSessionId}`;
+        break;
+      case AuthLevel.AUTHENTICATED:
+        if (!this.authenticatedSessionId) {
+          this.authenticatedSessionId = await this.sessionIdStorage.getAuthenticatedSessionId();
+        }
+        if (!this.authenticatedSessionId) {
+          throw new Error('An authenticated session ID is required but not available');
+        }
+        baseHeaders['Authorization'] = `Bearer ${this.authenticatedSessionId}`;
+        break;
+      default:
+        throw new Error(`Invalid auth level: ${authLevel}`);
     }
 
     const url = new URL(path, baseUrl);
@@ -145,6 +186,15 @@ export class FsApiClient {
     const response = await fetch(url.toString(), requestInit);
 
     if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        if (authLevel === AuthLevel.AUTHENTICATED) {
+          this.authenticatedSessionId = undefined;
+          await this.sessionIdStorage.setAuthenticatedSessionId(undefined);
+        } else if (authLevel === AuthLevel.ANONYMOUS && allowRetry) {
+          await this.fetchNewAnonymousSessionId();
+          return await this.request({ authLevel, baseUrl, path, headers, body, queryStringParams, allowRetry: false });
+        }
+      }
       throw new Error(`${requestInit.method} request to ${url} failed with status ${response.status}`);
     }
 
@@ -155,10 +205,11 @@ export class FsApiClient {
 }
 
 interface RequestProps {
-  requireAuth: boolean;
+  authLevel: AuthLevel;
   baseUrl: string;
   path: string;
   headers?: Record<string, string>;
   body?: string | URLSearchParams | object;
   queryStringParams?: URLSearchParams;
+  allowRetry?: boolean;
 }

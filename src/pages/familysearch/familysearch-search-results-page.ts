@@ -13,6 +13,10 @@ export class FamilySearchSearchResultsPage implements Page {
       && url.searchParams.get('click-first-result') === 'true';
   }
 
+  requiresAuthenticatedSessionId(): boolean {
+    return false;
+  }
+
   async onPageEnter(): Promise<void> {
     console.log('FamilySearchSearchResultsPage - onPageEnter');
   }
