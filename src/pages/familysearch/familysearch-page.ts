@@ -37,7 +37,7 @@ export class FamilySearchPage implements Page {
 
   private async updateSessionId(): Promise<void> {
     const currentSessionId = getFamilySearchSessionIdFromCookie();
-    if (currentSessionId && currentSessionId !== this.authenticatedSessionId) {
+    if (currentSessionId !== this.authenticatedSessionId) {
       this.authenticatedSessionId = currentSessionId;
       await this.sessionIdStorage.setAuthenticatedSessionId(this.authenticatedSessionId);
     }

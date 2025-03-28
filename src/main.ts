@@ -12,18 +12,18 @@ import { ChromeExtensionFsSessionIdStorage } from "./fs-api/chrome-extension-fs-
 import { Toast } from "./ui/toast";
 
 async function main() {
-  const sessionStorage = new ChromeExtensionFsSessionIdStorage();
-  console.log(`Authenticated session ID: ${await sessionStorage.getAuthenticatedSessionId()}`);
-  console.log(`Anonymous session ID: ${await sessionStorage.getAnonymousSessionId()}`);
-  const fsApiClient = new FsApiClient(sessionStorage);
+  const fsSessionIdStorage = new ChromeExtensionFsSessionIdStorage();
+  console.log(`Authenticated session ID: ${await fsSessionIdStorage.getAuthenticatedSessionId()}`);
+  console.log(`Anonymous session ID: ${await fsSessionIdStorage.getAnonymousSessionId()}`);
+  const fsApiClient = new FsApiClient(fsSessionIdStorage);
   const ALL_PAGES: Page[] = [
     // new BillionGravesGravePage(),
-    new FamilySearchPage(sessionStorage),
+    new FamilySearchPage(fsSessionIdStorage),
     new FamilySearchFilmPage(),
     new FamilySearchPersonDetailsPage(fsApiClient),
     new FamilySearchRecordPage(fsApiClient),
     new FamilySearchSearchResultsPage(),  
-    new FindAGravePage(fsApiClient)
+    new FindAGravePage(fsSessionIdStorage, fsApiClient)
   ];
   
   let currentURL: URL | undefined;
@@ -67,13 +67,6 @@ async function main() {
             await page.onPageEnter();
             matchingPages.add(page);
           }
-          if (page.requiresAuthenticatedSessionId() && !(await fsApiClient.isAuthenticated())) {
-            Toast.show({
-              title: 'Authentication Required',
-              message: 'Some FS Tools functionality may be limited on this page. Please sign in to FamilySearch.org, then refresh this page to enable all features.',
-              url: 'https://ident.familysearch.org/en/identity/login/?state=https://www.familysearch.org/en/united-states/',
-            });
-          }
         } else {
           if (matchingPages.has(page)) {
             await page.onPageExit();
@@ -87,13 +80,40 @@ async function main() {
       await page.onPageContentUpdate(updateId);
     }
   }
+
+  async function onAuthenticatedSessionIdChange(newSessionId: string | undefined): Promise<void> {
+    console.log(`Authenticated session ID changed: ${newSessionId}`);
+    const matchingPagesArray = [...matchingPages];
+    console.log(`Matching pages: ${matchingPagesArray.map(page => page.constructor.name).join(', ')}`);
+    const anyPagesToastable = matchingPagesArray.some(page => page.requiresAuthenticatedSessionId());
+    console.log(`Any pages toastable: ${anyPagesToastable}`);
+    if (anyPagesToastable) {
+      if (newSessionId) {
+        console.log('Authenticated session ID is set');
+        Toast.hide();
+      } else {
+        console.log('Authenticated session ID is not set');
+        Toast.show({
+          title: 'Authentication Required',
+          message: 'Some FS Tools functionality may be limited on this page because you are not logged into FamilySearch on this browser. Click here to log in to FamilySearch. Then refresh this page.',
+          url: 'https://www.familysearch.org/en/united-states/',
+        });
+      }
+
+      // some UI elements may be added or removed from the page when the session ID changes
+      await onPageChange();
+    }
+  }
   
+
   new MutationObserver(onPageChange).observe(document, {
     childList: true,
     subtree: true,
   });
+  fsSessionIdStorage.subsribeToAuthenticatedSessionIdChanges('main', onAuthenticatedSessionIdChange);
   
   await onPageChange();
+  await onAuthenticatedSessionIdChange(await fsSessionIdStorage.getAuthenticatedSessionId());
 }
 
 main();

@@ -1,13 +1,16 @@
 import { FINDAGRAVE_COLLECTION_ID } from "../../constants";
 import { FS_FAVICON_URL, PERSON_ICON_HTML, RECORD_ICON_HTML, REFRESH_ICON_HTML, styleIcon } from "../../icons";
 import { FsApiClient } from "../../fs-api/fs-api-client";
-import { SourceAttachment } from "../../fs-api/models/source-attachment";
 import { Page } from "../../page";
+import { FsSessionIdStorage } from "../../fs-api/fs-session-id-storage";
 
 type MemorialElementData = {
   memorialId: string;
   fsPersonId?: string;
   fsRecordId?: string;
+  isRecordDirty: boolean;
+  isPersonDirty: boolean;
+  isBeingProcessed?: boolean;
 };
 
 /**
@@ -26,10 +29,13 @@ export class FindAGravePage implements Page {
   // Blacklist of memorial names that are not actual memorials
   private static readonly MEMRIAL_PATH_NAMES = new Set(['search', 'edit', 'edit#gps-location', 'sponsor', 'memorial']);
     
+  private readonly fsSessionIdStorage: FsSessionIdStorage;
   private readonly fsApiClient: FsApiClient;
   private readonly memorialElements = new Map<HTMLElement, MemorialElementData>();
+  private isBackgroundUpdateRunning = false;
 
-  constructor(fsApiClient: FsApiClient) {
+  constructor(fsSessionIdStorage: FsSessionIdStorage, fsApiClient: FsApiClient) {
+    this.fsSessionIdStorage = fsSessionIdStorage;
     this.fsApiClient = fsApiClient;
     this.addSpinClassStyle();
   }
@@ -53,7 +59,7 @@ export class FindAGravePage implements Page {
   async onPageContentUpdate(updateID: string): Promise<void> {
     this.updateMemorialData();
     this.updateUI();
-    await this.performBackgroundUpdates();
+    this.scheduleBackgroundUpdates();
   }
 
   private updateMemorialData(): void {
@@ -78,10 +84,15 @@ export class FindAGravePage implements Page {
   private getOrCreateMemorialElementData(memorialElement: HTMLElement, memorialId: string) {
     let memorialElementData = this.memorialElements.get(memorialElement);
     if (!memorialElementData) {
+      const fsRecordId = this.getCachedFsRecordId(memorialId);
+      const fsPersonId = this.getCachedFsPersonId(memorialId);
+      
       memorialElementData = {
         memorialId,
-        fsRecordId: this.getCachedFsRecordId(memorialId),
-        fsPersonId: this.getCachedFsPersonId(memorialId)
+        fsRecordId,
+        fsPersonId,
+        isRecordDirty: !fsRecordId,
+        isPersonDirty: !fsPersonId && !!fsRecordId && fsRecordId !== FindAGravePage.FS_ID_NONE
       };
       this.memorialElements.set(memorialElement, memorialElementData);
     }
@@ -163,6 +174,7 @@ export class FindAGravePage implements Page {
     let fsRecordLink = fsLinkGroup.querySelector<HTMLAnchorElement>(`.${FindAGravePage.FS_RECORD_LINK_CLASS}`);
     if (!fsRecordLink) {
       fsRecordLink = document.createElement('a');
+      fsRecordLink.style.color = 'gray';
       fsRecordLink.classList.add(FindAGravePage.FS_RECORD_LINK_CLASS);
       fsRecordLink.target = '_blank';
       fsRecordLink.onclick = (e) => { e.stopPropagation(); };
@@ -173,7 +185,10 @@ export class FindAGravePage implements Page {
     // Update the record link
     fsRecordLink.href = hasRecordId
       ? `https://www.familysearch.org/ark:/61903/1:1:${memorialElementData.fsRecordId}`
-      : `https://www.familysearch.org/search/record/results?f.collectionId=${FINDAGRAVE_COLLECTION_ID}&q.externalRecordId=${memorialElementData.memorialId}&click-first-result=true`;
+      : `https://www.familysearch.org/en/search/record/results?f.collectionId=${FINDAGRAVE_COLLECTION_ID}&q.externalRecordId=${memorialElementData.memorialId}&click-first-result=true`;
+    if (hasRecordId) {
+      fsRecordLink.style.color = '';
+    }
     
     // Create the person link if needed
     let fsPersonLink = fsLinkGroup.querySelector<HTMLAnchorElement>(`.${FindAGravePage.FS_PERSON_LINK_CLASS}`);
@@ -207,55 +222,123 @@ export class FindAGravePage implements Page {
       fsDataRefreshLink.onclick = async (e) => {
         e.preventDefault();
         e.stopPropagation();
-        fsDataRefreshLink!.querySelector('svg')!.classList.add('spin');
-        await this.performBackgroundUpdate(memorialElementData, memorialElement, true);
-        fsDataRefreshLink!.querySelector('svg')!.classList.remove('spin');
+        
+        // Mark the element as dirty to force an update
+        memorialElementData.isRecordDirty = true;
+        memorialElementData.isPersonDirty = true;
+        
+        await this.updateSingleElementWithSpinner(memorialElement, memorialElementData);
       };
       fsDataRefreshLink.innerHTML = REFRESH_ICON_HTML;
       fsLinkGroup.appendChild(fsDataRefreshLink);
     }
-  }
-
-  private async performBackgroundUpdates(): Promise<void> {
-    for (const [memorialElement, memorialElementData] of this.memorialElements.entries()) {
-      // Fetch the record ID if needed
-      await this.performBackgroundUpdate(memorialElementData, memorialElement);
+    
+    // Update spinner state based on processing status
+    const refreshIcon = fsDataRefreshLink.querySelector('svg');
+    if (refreshIcon) {
+      if (memorialElementData.isBeingProcessed) {
+        refreshIcon.classList.add('spin');
+      } else {
+        refreshIcon.classList.remove('spin');
+      }
     }
   }
 
-  private async performBackgroundUpdate(memorialElementData: MemorialElementData, memorialElement: HTMLElement, forceRefresh = false): Promise<void> {
-    if (forceRefresh || !memorialElementData.fsRecordId) {
+  private async updateSingleElementWithSpinner(memorialElement: HTMLElement, memorialElementData: MemorialElementData): Promise<void> {
+    memorialElementData.isBeingProcessed = true;
+    this.updateLinksFromData(memorialElement, memorialElementData);
+    
+    try {
+      await this.updateElementData(memorialElement, memorialElementData);
+    } finally {
+      memorialElementData.isBeingProcessed = false;
+      this.updateLinksFromData(memorialElement, memorialElementData);
+    }
+  }
+
+  private scheduleBackgroundUpdates(): void {
+    if (!this.isBackgroundUpdateRunning) {
+      this.isBackgroundUpdateRunning = true;
+      setTimeout(() => this.processBackgroundUpdates(), 0);
+    }
+  }
+
+  private async processBackgroundUpdates(): Promise<void> {
+    try {
+      let hasDirtyElements = true;
+      
+      while (hasDirtyElements) {
+        hasDirtyElements = false;
+        
+        for (const [memorialElement, memorialElementData] of this.memorialElements.entries()) {
+          if (memorialElementData.isRecordDirty || memorialElementData.isPersonDirty) {
+            hasDirtyElements = true;
+            
+            memorialElementData.isBeingProcessed = true;
+            this.updateLinksFromData(memorialElement, memorialElementData);
+            
+            try {
+              await this.updateElementData(memorialElement, memorialElementData);
+            } finally {
+              memorialElementData.isBeingProcessed = false;
+              this.updateLinksFromData(memorialElement, memorialElementData);
+            }
+          }
+        }
+      }
+    } finally {
+      this.isBackgroundUpdateRunning = false;
+    }
+  }
+
+  private async updateElementData(memorialElement: HTMLElement, memorialElementData: MemorialElementData): Promise<void> {
+    // Update record ID if dirty
+    if (memorialElementData.isRecordDirty) {
       const searchRecordsResponse = await this.fsApiClient.searchRecords(new URLSearchParams({
         'q.externalRecordId': memorialElementData.memorialId,
         'f.collectionId': FINDAGRAVE_COLLECTION_ID
       }));
+      
       console.log(`Search records response for memorial ID ${memorialElementData.memorialId}`, searchRecordsResponse);
-      memorialElementData.fsRecordId = searchRecordsResponse?.entries?.length === 1
-        ? searchRecordsResponse.entries[0].id : FindAGravePage.FS_ID_NONE;
-      this.setCachedFsRecordId(memorialElementData.memorialId, memorialElementData.fsRecordId);
-    }
-
-    // Fetch the person ID if needed
-    let attachments: SourceAttachment[] | undefined = undefined;
-    if (await this.fsApiClient.isAuthenticated()) {
-      try {
-        if (forceRefresh || !memorialElementData.fsPersonId && memorialElementData.fsRecordId !== FindAGravePage.FS_ID_NONE) {
-          attachments = await this.fsApiClient.getAttachmentsForRecord(memorialElementData.fsRecordId);
-        }
-      } catch (e) {
-        console.error('Error fetching person ID. The session ID is probably unauthed', e);
+      
+      const newRecordId = searchRecordsResponse?.entries?.length === 1
+        ? searchRecordsResponse.entries[0].id 
+        : FindAGravePage.FS_ID_NONE;
+      
+      memorialElementData.fsRecordId = newRecordId;
+      this.setCachedFsRecordId(memorialElementData.memorialId, newRecordId);
+      memorialElementData.isRecordDirty = false;
+      
+      // Person becomes dirty if we found a record ID and don't have a person ID
+      if (newRecordId !== FindAGravePage.FS_ID_NONE && !memorialElementData.fsPersonId) {
+        memorialElementData.isPersonDirty = true;
       }
     }
 
-    if (attachments) {
-      console.log(`Attachments response for memorialID ${memorialElementData.memorialId} (record ID ${memorialElementData.fsRecordId})`, attachments);
-      const fsPersonId = attachments.length > 0 && attachments[0].persons.length > 0
-        ? attachments[0].persons[0].entityId : FindAGravePage.FS_ID_NONE;
+    // Update person ID if dirty
+    const authenticatedSessionIdIsPresent = !!(await this.fsSessionIdStorage.getAuthenticatedSessionId());
+    if (memorialElementData.isPersonDirty && 
+        authenticatedSessionIdIsPresent && 
+        memorialElementData.fsRecordId && 
+        memorialElementData.fsRecordId !== FindAGravePage.FS_ID_NONE) {
+      
+      const attachments = await this.fsApiClient.getAttachmentsForRecord(memorialElementData.fsRecordId);
+      
+      console.log(
+        `Attachments response for memorialID ${memorialElementData.memorialId} (record ID ${memorialElementData.fsRecordId})`, 
+        attachments
+      );
+      
+      const fsPersonId = attachments && attachments.length > 0 && attachments[0].persons.length > 0
+        ? attachments[0].persons[0].entityId 
+        : FindAGravePage.FS_ID_NONE;
+      
       memorialElementData.fsPersonId = fsPersonId;
       this.setCachedFsPersonId(memorialElementData.memorialId, fsPersonId);
+      memorialElementData.isPersonDirty = false;
     }
 
-    // Update the button group in the UI
+    // Update the UI for this specific element
     this.updateLinksFromData(memorialElement, memorialElementData);
   }
 

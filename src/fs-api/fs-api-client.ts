@@ -20,29 +20,11 @@ export class FsApiClient {
   private static readonly GEDCOMX_JSON_TYPE = 'application/x-gedcomx-v1+json';
   
   private sessionIdStorage: FsSessionIdStorage;
-  private anonymousSessionId?: string;
-  private authenticatedSessionId?: string;
-  
-  /**
-   * Indicates whether the client has an authenticated session
-   */
-  public async isAuthenticated(): Promise<boolean> {
-    if (!this.authenticatedSessionId) {
-      this.authenticatedSessionId = await this.sessionIdStorage.getAuthenticatedSessionId();
-    }    
-    return !!this.authenticatedSessionId;
-  }
+  private anonymousRequestCounter = 0;
+  private static readonly ANONYMOUS_REFRESH_THRESHOLD = 100;
   
   constructor(fsSessionIdStorage: FsSessionIdStorage) {
     this.sessionIdStorage = fsSessionIdStorage;
-    this.sessionIdStorage.onAuthenticatedSessionIdChange((sessionId) => {
-      console.log(`Authenticated session ID changed to ${sessionId}`);
-      this.authenticatedSessionId = sessionId;
-    });
-    this.sessionIdStorage.onAnonymousSessionIdChange((sessionId) => {
-      console.log(`Authenticated session ID changed to ${sessionId}`);
-      this.anonymousSessionId = sessionId;
-    });
   }
 
   /**
@@ -62,7 +44,6 @@ export class FsApiClient {
       })
     });
 
-    this.anonymousSessionId = res.access_token;
     await this.sessionIdStorage.setAnonymousSessionId(res.access_token);
   }
 
@@ -127,22 +108,30 @@ export class FsApiClient {
       case AuthLevel.NONE:
         break;
       case AuthLevel.ANONYMOUS:
-        if (!this.anonymousSessionId) {
-          this.anonymousSessionId = await this.sessionIdStorage.getAnonymousSessionId();
-        }
-        if (!this.anonymousSessionId) {
+        // Check if we need to refresh the anonymous session ID
+        if (this.anonymousRequestCounter >= FsApiClient.ANONYMOUS_REFRESH_THRESHOLD) {
           await this.fetchNewAnonymousSessionId();
+          this.anonymousRequestCounter = 0;
         }
-        baseHeaders['Authorization'] = `Bearer ${this.authenticatedSessionId || this.anonymousSessionId}`;
+        
+        // Always use anonymous session ID for anonymous requests
+        let anonymousSessionId = await this.sessionIdStorage.getAnonymousSessionId();
+        if (!anonymousSessionId) {
+          await this.fetchNewAnonymousSessionId();
+          anonymousSessionId = await this.sessionIdStorage.getAnonymousSessionId()!;
+        }
+        
+        // Increment counter after getting/refreshing the session ID
+        this.anonymousRequestCounter++;
+        
+        baseHeaders['Authorization'] = `Bearer ${anonymousSessionId}`;
         break;
       case AuthLevel.AUTHENTICATED:
-        if (!this.authenticatedSessionId) {
-          this.authenticatedSessionId = await this.sessionIdStorage.getAuthenticatedSessionId();
-        }
-        if (!this.authenticatedSessionId) {
+        const authenticatedSessionId = await this.sessionIdStorage.getAuthenticatedSessionId();
+        if (!authenticatedSessionId) {
           throw new Error('An authenticated session ID is required but not available');
         }
-        baseHeaders['Authorization'] = `Bearer ${this.authenticatedSessionId}`;
+        baseHeaders['Authorization'] = `Bearer ${authenticatedSessionId}`;
         break;
       default:
         throw new Error(`Invalid auth level: ${authLevel}`);
@@ -188,9 +177,12 @@ export class FsApiClient {
     if (!response.ok) {
       if (response.status === 401 || response.status === 403) {
         if (authLevel === AuthLevel.AUTHENTICATED) {
-          this.authenticatedSessionId = undefined;
+          // If the session is authenticated but expired, we need to clear the session ID
+          console.warn('Authenticated session ID expired. Clearing it.');
           await this.sessionIdStorage.setAuthenticatedSessionId(undefined);
         } else if (authLevel === AuthLevel.ANONYMOUS && allowRetry) {
+          // If the session is anonymous and expired, we need to refresh it
+          console.warn('Anonymous session ID expired. Refreshing it.');
           await this.fetchNewAnonymousSessionId();
           return await this.request({ authLevel, baseUrl, path, headers, body, queryStringParams, allowRetry: false });
         }
