@@ -16,6 +16,10 @@ export class FamilySearchSearchResultsPage implements Page {
   requiresAuthenticatedSessionId(): boolean {
     return false;
   }
+  
+  public async handleVersionUpgrade(oldVersion: string | null, newVersion: string): Promise<void> {
+    // Do nothing
+  }
 
   async onPageEnter(): Promise<void> {
     console.log('FamilySearchSearchResultsPage - onPageEnter');

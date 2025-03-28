@@ -4,4 +4,5 @@ export interface Page {
   onPageEnter(): Promise<void>;
   onPageExit(): Promise<void>;
   onPageContentUpdate(updateID: string): Promise<void>;
+  handleVersionUpgrade(oldVersion: string | null, newVersion: string): Promise<void>;
 }

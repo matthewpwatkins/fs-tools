@@ -18,6 +18,10 @@ export class BillionGravesGravePage implements Page {
     return false;
   }
 
+  public async handleVersionUpgrade(oldVersion: string | null, newVersion: string): Promise<void> {
+    // Do nothing
+  }
+
   async onPageEnter(): Promise<void> {
     console.log('BillionGravesGravePage - onPageEnter');
   }

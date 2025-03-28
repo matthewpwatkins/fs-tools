@@ -40,6 +40,14 @@ export class FindAGravePage implements Page {
     this.addSpinClassStyle();
   }
 
+  public async handleVersionUpgrade(oldVersion: string | null, newVersion: string): Promise<void> {
+    // If old version is < 1.0.16 or blank
+    if (!oldVersion || oldVersion < '1.0.16') {
+      console.log(`Data version upgrade detected: ${oldVersion} -> ${newVersion}. Clearing local storage`);
+      localStorage.clear();
+    }
+  }
+
   async isMatch(url: URL): Promise<boolean> {
     return url.hostname.toLowerCase().endsWith('findagrave.com');
   }

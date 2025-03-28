@@ -5,8 +5,6 @@ import { createFullTextSearchForm } from "../../util/familysearch-utils";
 import { buildSearchUrlForPerson, SearchDetailLevel } from "../../util/gedcomx-utils";
 
 export class FamilySearchRecordPage implements Page {
-  private static readonly FS_TREE_SEARCH_LINK_ID = 'fs-tree-search-link';
-  
   private readonly fsApiClient: FsApiClient;
 
   private searchLinksGenerated = false;
@@ -22,6 +20,10 @@ export class FamilySearchRecordPage implements Page {
 
   requiresAuthenticatedSessionId(): boolean {
     return false;
+  }
+  
+  public async handleVersionUpgrade(oldVersion: string | null, newVersion: string): Promise<void> {
+    // Do nothing
   }
 
   async onPageEnter(): Promise<void> {

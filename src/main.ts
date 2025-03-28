@@ -30,7 +30,7 @@ async function main() {
   const matchingPages: Set<Page> = new Set();
   let updateQueued = false;
   let updateInProgress: string | undefined;
-  
+
   async function onPageChange() {
     const updateId = uuidv4().split('-')[1];
     // console.log(`UPDATE ${updateId}: Received`);
@@ -57,6 +57,16 @@ async function main() {
     }
   }
 
+  async function onFirstPageMatch(page: Page): Promise<void> {
+    // Get current chrome extension version
+    const newVersion = chrome.runtime.getManifest().version;
+    const oldVersion = localStorage.getItem('fs-tool-data-version');
+    if (oldVersion !== newVersion) {
+      await page.handleVersionUpgrade(oldVersion, newVersion);
+      localStorage.setItem('fs-tool-data-version', newVersion);
+    }
+  }
+
   async function processUpdate(updateId: string) {
     const url = new URL(window.location.href);
     const urlChanged = url.href !== currentURL?.href;
@@ -64,6 +74,7 @@ async function main() {
       for (const page of ALL_PAGES) {
         if (await page.isMatch(url)) {
           if (!matchingPages.has(page)) {
+            await onFirstPageMatch(page);
             await page.onPageEnter();
             matchingPages.add(page);
           }
