@@ -4,44 +4,73 @@ import { FsApiClient } from "../../fs-api/fs-api-client";
 import { Page } from "../../page";
 import { FsSessionIdStorage } from "../../fs-api/fs-session-id-storage";
 
-type MemorialElementData = {
+/**
+ * Status enum for record and person IDs
+ */
+enum IdStatus {
+  UNKNOWN = 'UNKNOWN', // Not yet searched
+  NONE = 'NONE',      // Searched but not found
+  FOUND = 'FOUND'     // Searched and found
+}
+
+// Constant for cache value when no ID is found
+const CACHE_NONE_VALUE = 'NONE';
+
+/**
+ * Memorial element data tracking
+ */
+interface MemorialData {
   memorialId: string;
-  fsPersonId?: string;
-  fsRecordId?: string;
-  isRecordDirty: boolean;
-  isPersonDirty: boolean;
-  isBeingProcessed?: boolean;
-};
+  recordId: string | null;
+  recordStatus: IdStatus;
+  personId: string | null;
+  personStatus: IdStatus;
+  isProcessing: boolean;
+  elements: Set<HTMLElement>; // Changed to Set for more efficient lookup
+}
 
 /**
  * Runs on all Find A Grave pages.
  * Adds a FamilySearch link to any memorial search results on the page
  */
-export class FindAGravePage implements Page {  
-  private static readonly FS_BTN_GROUP_CLASS = 'fs-btn-group';
-  private static readonly FS_MAIN_LINK_CLASS = 'fs-main-link';
-  private static readonly FS_RECORD_LINK_CLASS = 'fs-record-link';
-  private static readonly FS_PERSON_LINK_CLASS = 'fs-person-link';
-  private static readonly FS_DATA_REFRESH_LINK_CLASS = 'fs-data-refresh-link';
-  private static readonly FS_ID_NONE = 'NONE';
+export class FindAGravePage implements Page {
+  // CSS class names
+  private static readonly CSS = {
+    BTN_GROUP: 'fs-btn-group',
+    MAIN_LINK: 'fs-main-link',
+    RECORD_LINK: 'fs-record-link',
+    PERSON_LINK: 'fs-person-link',
+    REFRESH_LINK: 'fs-data-refresh-link',
+    SPIN_CONTAINER: 'fs-spin-container',
+    SPIN: 'spin',
+    STATUS: {
+      DEFAULT: 'fs-status-default',
+      GRAY: 'fs-status-gray',
+      ORANGE: 'fs-status-orange'
+    }
+  };
+
+  // Constants
   private static readonly MEMORIAL_ID_REGEX = /^\d+$/;
-
-  // Blacklist of memorial names that are not actual memorials
-  private static readonly MEMRIAL_PATH_NAMES = new Set(['search', 'edit', 'edit#gps-location', 'sponsor', 'memorial']);
-    
-  private readonly fsSessionIdStorage: FsSessionIdStorage;
-  private readonly fsApiClient: FsApiClient;
-  private readonly memorialElements = new Map<HTMLElement, MemorialElementData>();
-  private isBackgroundUpdateRunning = false;
-
-  constructor(fsSessionIdStorage: FsSessionIdStorage, fsApiClient: FsApiClient) {
-    this.fsSessionIdStorage = fsSessionIdStorage;
-    this.fsApiClient = fsApiClient;
-    this.addSpinClassStyle();
+  private static readonly NON_MEMORIAL_PATHS = new Set([
+    'search', 'edit', 'edit#gps-location', 'sponsor', 'memorial'
+  ]);
+  
+  // Memory and state management
+  private memorials = new Map<string, MemorialData>(); // Map of memorialId -> MemorialData
+  private updateQueue: MemorialData[] = [];
+  private isProcessingQueue = false;
+  private observer: MutationObserver | null = null;
+  
+  constructor(
+    private readonly fsSessionIdStorage: FsSessionIdStorage,
+    private readonly fsApiClient: FsApiClient
+  ) {
+    this.setupStyles();
   }
 
   public async handleVersionUpgrade(oldVersion: string | null, newVersion: string): Promise<void> {
-    // If old version is < 1.0.16 or blank
+    // Clear localStorage if coming from version before 1.0.16
     if (!oldVersion || oldVersion < '1.0.16') {
       console.log(`Data version upgrade detected: ${oldVersion} -> ${newVersion}. Clearing local storage`);
       localStorage.clear();
@@ -58,324 +87,477 @@ export class FindAGravePage implements Page {
 
   async onPageEnter(): Promise<void> {
     console.log('FindAGravePage - onPageEnter');
+    this.setupMutationObserver();
+    this.scanForMemorials();
   }
 
   async onPageExit(): Promise<void> {
     console.log('FindAGravePage - onPageExit');
+    if (this.observer) {
+      this.observer.disconnect();
+      this.observer = null;
+    }
   }
 
-  async onPageContentUpdate(updateID: string): Promise<void> {
-    this.updateMemorialData();
-    this.updateUI();
-    this.scheduleBackgroundUpdates();
+  async onPageContentUpdate(): Promise<void> {
+    this.scanForMemorials();
   }
 
-  private updateMemorialData(): void {
-    // Header element
+  //
+  // DOM Observation & Scanning
+  //
+
+  private setupMutationObserver(): void {
+    this.observer = new MutationObserver((mutations) => {
+      let shouldScan = false;
+      
+      for (const mutation of mutations) {
+        // Ignore mutations caused by our own updates
+        if (mutation.target instanceof Element && 
+            (mutation.target.classList?.contains(FindAGravePage.CSS.BTN_GROUP) ||
+             mutation.target.closest(`.${FindAGravePage.CSS.BTN_GROUP}`))) {
+          continue;
+        }
+        
+        shouldScan = true;
+        break;
+      }
+      
+      if (shouldScan) {
+        this.scanForMemorials();
+      }
+    });
+
+    this.observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+  }
+
+  private scanForMemorials(): void {
+    // Scan header element (memorial details page)
     const memorialNameHeader = document.getElementById('bio-name') as HTMLHeadingElement;
     if (memorialNameHeader) {
-      const memorialId = FindAGravePage.extractMemorialId(document.location);
+      const memorialId = this.extractMemorialIdFromLocation();
       if (memorialId) {
-        this.getOrCreateMemorialElementData(memorialNameHeader, memorialId);
+        this.addOrUpdateMemorial(memorialNameHeader, memorialId);
       }
     }
 
-    // Memorial links
-    for (const memorialLink of document.querySelectorAll<HTMLAnchorElement>('a[href^="/memorial/"]')) {
-      const memorialId = FindAGravePage.extractMemorialId(memorialLink.href);
+    // Scan all memorial links
+    document.querySelectorAll<HTMLAnchorElement>('a[href^="/memorial/"]').forEach(link => {
+      const memorialId = this.extractMemorialIdFromUrl(link.href);
       if (memorialId) {
-        this.getOrCreateMemorialElementData(memorialLink, memorialId);
+        this.addOrUpdateMemorial(link, memorialId);
       }
+    });
+  }
+
+  private extractMemorialIdFromUrl(url: string): string | null {
+    try {
+      const urlObj = new URL(url, window.location.origin);
+      return this.extractMemorialIdFromPath(urlObj.pathname);
+    } catch (e) {
+      return null;
     }
   }
 
-  private getOrCreateMemorialElementData(memorialElement: HTMLElement, memorialId: string) {
-    let memorialElementData = this.memorialElements.get(memorialElement);
-    if (!memorialElementData) {
-      const fsRecordId = this.getCachedFsRecordId(memorialId);
-      const fsPersonId = this.getCachedFsPersonId(memorialId);
-      
-      memorialElementData = {
-        memorialId,
-        fsRecordId,
-        fsPersonId,
-        isRecordDirty: !fsRecordId,
-        isPersonDirty: !fsPersonId && !!fsRecordId && fsRecordId !== FindAGravePage.FS_ID_NONE
-      };
-      this.memorialElements.set(memorialElement, memorialElementData);
-    }
-    return memorialElementData;
+  private extractMemorialIdFromLocation(): string | null {
+    return this.extractMemorialIdFromPath(document.location.pathname);
   }
 
-  private static extractMemorialId(path: string | URL | Location): string | undefined {
-    if (path instanceof URL) {
-      return FindAGravePage.extractMemorialId(path.pathname);
-    }
-  
-    if (path instanceof Location) {
-      return FindAGravePage.extractMemorialId(path.pathname);
-    }
-  
-    if (!path.startsWith('/')) {
-      return FindAGravePage.extractMemorialId(new URL(path));
-    }
-
-    const pathComponents = path.split('/').map(c => c?.trim()).filter(c => c?.length >= 1);
-    if (pathComponents.length !== 3) {
-      return undefined;
+  private extractMemorialIdFromPath(path: string): string | null {
+    const pathComponents = path.split('/').filter(c => c.length > 0);
+    
+    // Path should be /memorial/{id}/{name}
+    if (pathComponents.length !== 3 || pathComponents[0] !== 'memorial') {
+      return null;
     }
 
     const memorialId = pathComponents[1];
+    const memorialName = pathComponents[2];
+    
+    // Validate memorial ID format (numbers only)
     if (!memorialId.match(FindAGravePage.MEMORIAL_ID_REGEX)) {
-      return undefined;
+      return null;
     }
 
-    const memorialName = pathComponents[2];
-    if (FindAGravePage.MEMRIAL_PATH_NAMES.has(memorialName)) {
-      return undefined;
+    // Skip non-memorial paths
+    if (FindAGravePage.NON_MEMORIAL_PATHS.has(memorialName)) {
+      return null;
     }
 
     return memorialId;
   }
-  
-  private updateUI(): void {
-    for (const [memorialElement, memorialElementData] of this.memorialElements.entries()) {
-      this.updateLinksFromData(memorialElement, memorialElementData);
-    }
-  }
 
-  private updateLinksFromData(memorialElement: HTMLElement, memorialElementData: MemorialElementData): void {
-    const hasRecordId = memorialElementData.fsRecordId && memorialElementData.fsRecordId !== FindAGravePage.FS_ID_NONE;
-    const hasPersonId = memorialElementData.fsPersonId && memorialElementData.fsPersonId !== FindAGravePage.FS_ID_NONE;
+  //
+  // Memorial Management
+  //
+
+  private addOrUpdateMemorial(element: HTMLElement, memorialId: string): void {
+    // Get existing memorial data or create new
+    let memorial = this.memorials.get(memorialId);
     
-    // Create the button group element if needed
-    let fsLinkGroup = memorialElement.querySelector<HTMLSpanElement>(`.${FindAGravePage.FS_BTN_GROUP_CLASS}`);
-    if (!fsLinkGroup) {
-      fsLinkGroup = document.createElement('div');
-      fsLinkGroup.className = FindAGravePage.FS_BTN_GROUP_CLASS;
-
-      const textElement = memorialElement.querySelector('h1, h2, h3, h4, h5, h6, p');
-      if (textElement) {
-        textElement.insertAdjacentElement('afterend', fsLinkGroup);
-      } else {
-        memorialElement.appendChild(fsLinkGroup);
+    if (memorial) {
+      // Skip if we already have this specific element tracked
+      if (memorial.elements.has(element)) {
+        return;
       }
-    }
-
-    // Create the main link if needed
-    let fsMainLink = fsLinkGroup.querySelector<HTMLAnchorElement>(`.${FindAGravePage.FS_MAIN_LINK_CLASS}`);
-    if (!fsMainLink) {
-      fsMainLink = document.createElement('a');
-      fsMainLink.classList.add(FindAGravePage.FS_MAIN_LINK_CLASS);
-      fsMainLink.target = '_blank';
-      fsMainLink.onclick = (e) => { e.stopPropagation(); };
-
-      const fsIcon = document.createElement('img');
-      fsIcon.src = FS_FAVICON_URL;
-      styleIcon(fsIcon);
-      fsMainLink.appendChild(fsIcon);
-
-      fsLinkGroup.appendChild(fsMainLink);
-    }
-
-    // Create the record link if needed
-    let fsRecordLink = fsLinkGroup.querySelector<HTMLAnchorElement>(`.${FindAGravePage.FS_RECORD_LINK_CLASS}`);
-    if (!fsRecordLink) {
-      fsRecordLink = document.createElement('a');
-      fsRecordLink.style.color = 'gray';
-      fsRecordLink.classList.add(FindAGravePage.FS_RECORD_LINK_CLASS);
-      fsRecordLink.target = '_blank';
-      fsRecordLink.onclick = (e) => { e.stopPropagation(); };
-      fsRecordLink.innerHTML = RECORD_ICON_HTML;
-      fsLinkGroup.appendChild(fsRecordLink);
-    }
-
-    // Update the record link
-    fsRecordLink.href = hasRecordId
-      ? `https://www.familysearch.org/ark:/61903/1:1:${memorialElementData.fsRecordId}`
-      : `https://www.familysearch.org/en/search/record/results?f.collectionId=${FINDAGRAVE_COLLECTION_ID}&q.externalRecordId=${memorialElementData.memorialId}&click-first-result=true`;
-    if (hasRecordId) {
-      fsRecordLink.style.color = '';
-    }
-    
-    // Create the person link if needed
-    let fsPersonLink = fsLinkGroup.querySelector<HTMLAnchorElement>(`.${FindAGravePage.FS_PERSON_LINK_CLASS}`);
-    if (!fsPersonLink) {
-      fsPersonLink = document.createElement('a');
-      fsPersonLink.classList.add(FindAGravePage.FS_PERSON_LINK_CLASS);
-      fsPersonLink.style.display = 'none';
-      fsPersonLink.target = '_blank';
-      fsPersonLink.onclick = (e) => {  e.stopPropagation(); };
-      fsPersonLink.innerHTML = PERSON_ICON_HTML;
-      fsLinkGroup.appendChild(fsPersonLink);
-    }
-
-    // Update the person and main link
-    if (hasPersonId) {
-      fsPersonLink.style.display = '';
-      fsPersonLink.href = `https://www.familysearch.org/tree/person/details/${memorialElementData.fsPersonId}`;
-      fsMainLink.href = fsPersonLink.href;
-    } else {
-      fsPersonLink.style.display = 'none';
-      fsMainLink.href = fsRecordLink.href;
-    }
-
-    // Create the refresh link if needed
-    let fsDataRefreshLink = fsLinkGroup.querySelector<HTMLAnchorElement>(`.${FindAGravePage.FS_DATA_REFRESH_LINK_CLASS}`);
-    if (!fsDataRefreshLink) {
-      fsDataRefreshLink = document.createElement('a');
-      fsDataRefreshLink.classList.add(FindAGravePage.FS_DATA_REFRESH_LINK_CLASS);
-      fsDataRefreshLink.href = '#';
-      fsDataRefreshLink.target = '_blank';
-      fsDataRefreshLink.onclick = async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        // Mark the element as dirty to force an update
-        memorialElementData.isRecordDirty = true;
-        memorialElementData.isPersonDirty = true;
-        
-        await this.updateSingleElementWithSpinner(memorialElement, memorialElementData);
-      };
-      fsDataRefreshLink.innerHTML = REFRESH_ICON_HTML;
-      fsLinkGroup.appendChild(fsDataRefreshLink);
-    }
-    
-    // Update spinner state based on processing status
-    const refreshIcon = fsDataRefreshLink.querySelector('svg');
-    if (refreshIcon) {
-      if (memorialElementData.isBeingProcessed) {
-        refreshIcon.classList.add('spin');
-      } else {
-        refreshIcon.classList.remove('spin');
-      }
-    }
-  }
-
-  private async updateSingleElementWithSpinner(memorialElement: HTMLElement, memorialElementData: MemorialElementData): Promise<void> {
-    memorialElementData.isBeingProcessed = true;
-    this.updateLinksFromData(memorialElement, memorialElementData);
-    
-    try {
-      await this.updateElementData(memorialElement, memorialElementData);
-    } finally {
-      memorialElementData.isBeingProcessed = false;
-      this.updateLinksFromData(memorialElement, memorialElementData);
-    }
-  }
-
-  private scheduleBackgroundUpdates(): void {
-    if (!this.isBackgroundUpdateRunning) {
-      this.isBackgroundUpdateRunning = true;
-      setTimeout(() => this.processBackgroundUpdates(), 0);
-    }
-  }
-
-  private async processBackgroundUpdates(): Promise<void> {
-    try {
-      let hasDirtyElements = true;
       
-      while (hasDirtyElements) {
-        hasDirtyElements = false;
+      // Add this element to the existing memorial's elements set
+      memorial.elements.add(element);
+    } else {
+      // Get data from local storage
+      const cachedRecordId = this.getCachedValue(`fs.${memorialId}.rid`);
+      const cachedPersonId = this.getCachedValue(`fs.${memorialId}.pid`);
+      
+      // Create new memorial data with a Set for elements
+      memorial = {
+        memorialId,
+        recordId: cachedRecordId !== CACHE_NONE_VALUE ? cachedRecordId : null,
+        recordStatus: cachedRecordId ? IdStatus.FOUND : IdStatus.UNKNOWN,
+        personId: cachedPersonId !== CACHE_NONE_VALUE ? cachedPersonId : null,
+        personStatus: cachedPersonId ? IdStatus.FOUND : IdStatus.UNKNOWN,
+        isProcessing: false,
+        elements: new Set([element])
+      };
+      
+      this.memorials.set(memorialId, memorial);
+    }
+    
+    // Render UI initially
+    this.renderMemorialLinks(memorial, element);
+    
+    // Queue for update if needed
+    if (memorial.recordStatus === IdStatus.UNKNOWN || 
+        (memorial.recordStatus === IdStatus.FOUND && memorial.personStatus === IdStatus.UNKNOWN)) {
+      this.queueForUpdate(memorial);
+    }
+  }
+
+  private queueForUpdate(memorial: MemorialData): void {
+    if (!this.updateQueue.includes(memorial)) {
+      this.updateQueue.push(memorial);
+      this.startBackgroundProcessing();
+    }
+  }
+
+  //
+  // UI Rendering
+  //
+
+  private renderMemorialLinks(memorial: MemorialData, element?: HTMLElement): void {
+    // If no specific element provided, update all elements for this memorial
+    const elementsToUpdate = element ? [element] : Array.from(memorial.elements);
+    
+    for (const el of elementsToUpdate) {
+      // Create or get the button group
+      let btnGroup = el.querySelector<HTMLDivElement>(`.${FindAGravePage.CSS.BTN_GROUP}`);
+      if (!btnGroup) {
+        btnGroup = document.createElement('div');
+        btnGroup.className = FindAGravePage.CSS.BTN_GROUP;
+        btnGroup.style.display = 'inline-block';
+        btnGroup.style.marginLeft = '8px';
         
-        for (const [memorialElement, memorialElementData] of this.memorialElements.entries()) {
-          if (memorialElementData.isRecordDirty || memorialElementData.isPersonDirty) {
-            hasDirtyElements = true;
-            
-            memorialElementData.isBeingProcessed = true;
-            this.updateLinksFromData(memorialElement, memorialElementData);
-            
-            try {
-              await this.updateElementData(memorialElement, memorialElementData);
-            } finally {
-              memorialElementData.isBeingProcessed = false;
-              this.updateLinksFromData(memorialElement, memorialElementData);
-            }
-          }
+        // Insert after text element if available, otherwise append to the element
+        const textElement = el.querySelector('h1, h2, h3, h4, h5, h6, p');
+        if (textElement) {
+          textElement.insertAdjacentElement('afterend', btnGroup);
+        } else {
+          el.appendChild(btnGroup);
         }
       }
-    } finally {
-      this.isBackgroundUpdateRunning = false;
+
+      // Create or update the main link
+      let mainLink = btnGroup.querySelector<HTMLAnchorElement>(`.${FindAGravePage.CSS.MAIN_LINK}`);
+      if (!mainLink) {
+        mainLink = document.createElement('a');
+        mainLink.className = FindAGravePage.CSS.MAIN_LINK;
+        mainLink.target = '_blank';
+        mainLink.onclick = (e) => e.stopPropagation();
+        
+        const fsIcon = document.createElement('img');
+        fsIcon.src = FS_FAVICON_URL;
+        styleIcon(fsIcon);
+        mainLink.appendChild(fsIcon);
+        
+        btnGroup.appendChild(mainLink);
+      }
+
+      // Create or update record link
+      let recordLink = btnGroup.querySelector<HTMLAnchorElement>(`.${FindAGravePage.CSS.RECORD_LINK}`);
+      if (!recordLink) {
+        recordLink = document.createElement('a');
+        recordLink.className = FindAGravePage.CSS.RECORD_LINK;
+        recordLink.target = '_blank';
+        recordLink.onclick = (e) => e.stopPropagation();
+        recordLink.innerHTML = RECORD_ICON_HTML;
+        btnGroup.appendChild(recordLink);
+      }
+
+      // Create or update person link
+      let personLink = btnGroup.querySelector<HTMLAnchorElement>(`.${FindAGravePage.CSS.PERSON_LINK}`);
+      if (!personLink) {
+        personLink = document.createElement('a');
+        personLink.className = FindAGravePage.CSS.PERSON_LINK;
+        personLink.target = '_blank';
+        personLink.onclick = (e) => e.stopPropagation();
+        personLink.innerHTML = PERSON_ICON_HTML;
+        btnGroup.appendChild(personLink);
+      }
+
+      // Create or update refresh link
+      let refreshLink = btnGroup.querySelector<HTMLAnchorElement>(`.${FindAGravePage.CSS.REFRESH_LINK}`);
+      if (!refreshLink) {
+        refreshLink = document.createElement('a');
+        refreshLink.className = FindAGravePage.CSS.REFRESH_LINK;
+        refreshLink.href = '#';
+        refreshLink.onclick = async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          await this.processMemorial(memorial, true);
+        };
+        
+        // Wrap the SVG in a span for better animation control
+        const spinContainer = document.createElement('span');
+        spinContainer.className = FindAGravePage.CSS.SPIN_CONTAINER;
+        spinContainer.innerHTML = REFRESH_ICON_HTML;
+        refreshLink.appendChild(spinContainer);
+        
+        btnGroup.appendChild(refreshLink);
+      }
+
+      // Update links based on current state
+      this.updateLinkStates(memorial, { mainLink, recordLink, personLink, refreshLink });
     }
   }
 
-  private async updateElementData(memorialElement: HTMLElement, memorialElementData: MemorialElementData): Promise<void> {
-    // Update record ID if dirty
-    if (memorialElementData.isRecordDirty) {
+  private updateLinkStates(
+    memorial: MemorialData, 
+    links: { 
+      mainLink: HTMLAnchorElement, 
+      recordLink: HTMLAnchorElement, 
+      personLink: HTMLAnchorElement, 
+      refreshLink: HTMLAnchorElement 
+    }
+  ): void {
+    const { mainLink, recordLink, personLink, refreshLink } = links;
+
+    // Clear all status classes first
+    recordLink.classList.remove(
+      FindAGravePage.CSS.STATUS.DEFAULT,
+      FindAGravePage.CSS.STATUS.GRAY,
+      FindAGravePage.CSS.STATUS.ORANGE
+    );
+    personLink.classList.remove(
+      FindAGravePage.CSS.STATUS.DEFAULT,
+      FindAGravePage.CSS.STATUS.GRAY,
+      FindAGravePage.CSS.STATUS.ORANGE
+    );
+
+    // Record link state
+    switch (memorial.recordStatus) {
+      case IdStatus.UNKNOWN:
+        recordLink.classList.add(FindAGravePage.CSS.STATUS.GRAY);
+        recordLink.href = this.getRecordSearchUrl(memorial.memorialId);
+        break;
+      case IdStatus.FOUND:
+        recordLink.classList.add(FindAGravePage.CSS.STATUS.DEFAULT);
+        recordLink.href = `https://www.familysearch.org/ark:/61903/1:1:${memorial.recordId}`;
+        break;
+      case IdStatus.NONE:
+        recordLink.classList.add(FindAGravePage.CSS.STATUS.ORANGE);
+        recordLink.href = this.getRecordSearchUrl(memorial.memorialId);
+        break;
+    }
+
+    // Person link state
+    switch (memorial.personStatus) {
+      case IdStatus.UNKNOWN:
+        personLink.classList.add(FindAGravePage.CSS.STATUS.GRAY);
+        personLink.style.pointerEvents = 'none';
+        personLink.href = '#';
+        personLink.style.display = '';
+        break;
+      case IdStatus.FOUND:
+        personLink.classList.add(FindAGravePage.CSS.STATUS.DEFAULT);
+        personLink.style.pointerEvents = 'auto';
+        personLink.href = `https://www.familysearch.org/tree/person/details/${memorial.personId}`;
+        personLink.style.display = '';
+        break;
+      case IdStatus.NONE:
+        personLink.classList.add(FindAGravePage.CSS.STATUS.ORANGE);
+        personLink.style.pointerEvents = 'none';
+        personLink.href = '#';
+        personLink.style.display = '';
+        break;
+    }
+
+    // Main link state - points to person if available, otherwise record
+    if (memorial.personStatus === IdStatus.FOUND) {
+      mainLink.href = personLink.href;
+    } else {
+      mainLink.href = recordLink.href;
+    }
+  }
+
+  private getRecordSearchUrl(memorialId: string): string {
+    return `https://www.familysearch.org/en/search/record/results?f.collectionId=${FINDAGRAVE_COLLECTION_ID}&q.externalRecordId=${memorialId}&click-first-result=true`;
+  }
+
+  //
+  // Data Processing
+  //
+
+  private async startBackgroundProcessing(): Promise<void> {
+    if (this.isProcessingQueue) return;
+    
+    this.isProcessingQueue = true;
+    
+    try {
+      while (this.updateQueue.length > 0) {
+        const memorial = this.updateQueue.shift()!;
+        await this.processMemorial(memorial);
+      }
+    } finally {
+      this.isProcessingQueue = false;
+    }
+  }
+
+  private markProcessing(memorial: MemorialData, isProcessing: boolean): void {
+    memorial.isProcessing = isProcessing;
+    memorial.elements.forEach(el => {
+      const refreshSpinner = el.querySelector<HTMLAnchorElement>(`.${FindAGravePage.CSS.REFRESH_LINK}`)?.querySelector(`.${FindAGravePage.CSS.SPIN_CONTAINER}`);
+      if (refreshSpinner) {
+        if (isProcessing) {
+          refreshSpinner.classList.add(FindAGravePage.CSS.SPIN);
+        } else {
+          refreshSpinner.classList.remove(FindAGravePage.CSS.SPIN);
+        }
+      }
+    });
+  }
+
+  private async processMemorial(memorial: MemorialData, forceLookup = false): Promise<void> {
+    this.markProcessing(memorial, true);    
+    try {
+      // Process record ID if unknown
+      if (forceLookup || memorial.recordStatus === IdStatus.UNKNOWN) {
+        await this.lookupRecordId(memorial);
+      }
+      
+      // Process person ID if record found and person unknown
+      if (forceLookup || (memorial.recordStatus === IdStatus.FOUND && memorial.personStatus === IdStatus.UNKNOWN)) {
+        await this.lookupPersonId(memorial);
+      }
+    } finally {
+      this.markProcessing(memorial, false);
+      this.renderMemorialLinks(memorial);
+    }
+  }
+
+  private async lookupRecordId(memorial: MemorialData): Promise<void> {
+    try {
       const searchRecordsResponse = await this.fsApiClient.searchRecords(new URLSearchParams({
-        'q.externalRecordId': memorialElementData.memorialId,
+        'q.externalRecordId': memorial.memorialId,
         'f.collectionId': FINDAGRAVE_COLLECTION_ID
       }));
       
-      console.log(`Search records response for memorial ID ${memorialElementData.memorialId}`, searchRecordsResponse);
+      console.log(`Search records response for memorial ID ${memorial.memorialId}`, searchRecordsResponse);
       
-      const newRecordId = searchRecordsResponse?.entries?.length === 1
-        ? searchRecordsResponse.entries[0].id 
-        : FindAGravePage.FS_ID_NONE;
-      
-      memorialElementData.fsRecordId = newRecordId;
-      this.setCachedFsRecordId(memorialElementData.memorialId, newRecordId);
-      memorialElementData.isRecordDirty = false;
-      
-      // Person becomes dirty if we found a record ID and don't have a person ID
-      if (newRecordId !== FindAGravePage.FS_ID_NONE && !memorialElementData.fsPersonId) {
-        memorialElementData.isPersonDirty = true;
+      if (searchRecordsResponse?.entries?.length === 1) {
+        const recordId = searchRecordsResponse.entries[0].id;
+        memorial.recordId = recordId;
+        memorial.recordStatus = IdStatus.FOUND;
+        this.setCachedValue(`fs.${memorial.memorialId}.rid`, recordId);
+      } else {
+        memorial.recordId = null;
+        memorial.recordStatus = IdStatus.NONE;
+        this.setCachedValue(`fs.${memorial.memorialId}.rid`, CACHE_NONE_VALUE);
       }
+    } catch (error) {
+      console.error('Error looking up record ID', error);
+      // Don't update status on error, will retry later
     }
+  }
 
-    // Update person ID if dirty
-    const authenticatedSessionIdIsPresent = !!(await this.fsSessionIdStorage.getAuthenticatedSessionId());
-    if (memorialElementData.isPersonDirty && 
-        authenticatedSessionIdIsPresent && 
-        memorialElementData.fsRecordId && 
-        memorialElementData.fsRecordId !== FindAGravePage.FS_ID_NONE) {
+  private async lookupPersonId(memorial: MemorialData): Promise<void> {
+    try {
+      // Only proceed if we have an authenticated session
+      if (!await this.fsSessionIdStorage.getAuthenticatedSessionId()) {
+        return;
+      }
       
-      const attachments = await this.fsApiClient.getAttachmentsForRecord(memorialElementData.fsRecordId);
+      const attachments = await this.fsApiClient.getAttachmentsForRecord(memorial.recordId!);
       
       console.log(
-        `Attachments response for memorialID ${memorialElementData.memorialId} (record ID ${memorialElementData.fsRecordId})`, 
+        `Attachments response for memorialID ${memorial.memorialId} (record ID ${memorial.recordId})`, 
         attachments
       );
       
-      const fsPersonId = attachments && attachments.length > 0 && attachments[0].persons.length > 0
-        ? attachments[0].persons[0].entityId 
-        : FindAGravePage.FS_ID_NONE;
-      
-      memorialElementData.fsPersonId = fsPersonId;
-      this.setCachedFsPersonId(memorialElementData.memorialId, fsPersonId);
-      memorialElementData.isPersonDirty = false;
+      if (attachments && attachments.length > 0 && attachments[0].persons?.length > 0) {
+        const personId = attachments[0].persons[0].entityId;
+        memorial.personId = personId;
+        memorial.personStatus = IdStatus.FOUND;
+        this.setCachedValue(`fs.${memorial.memorialId}.pid`, personId);
+      } else {
+        memorial.personId = null;
+        memorial.personStatus = IdStatus.NONE;
+        this.setCachedValue(`fs.${memorial.memorialId}.pid`, CACHE_NONE_VALUE);
+      }
+    } catch (error) {
+      console.error('Error looking up person ID', error);
+      // Don't update status on error, will retry later
     }
-
-    // Update the UI for this specific element
-    this.updateLinksFromData(memorialElement, memorialElementData);
   }
 
-  private getCachedFsRecordId(memorialId: string): string | undefined {
-    return localStorage.getItem(`fs.${memorialId}.rid`) || undefined;
+  //
+  // Storage Helpers
+  //
+
+  private getCachedValue(key: string): string | null {
+    return localStorage.getItem(key);
   }
 
-  private setCachedFsRecordId(memorialId: string, fsRecordId: string): void {
-    localStorage.setItem(`fs.${memorialId}.rid`, fsRecordId);
+  private setCachedValue(key: string, value: string): void {
+    localStorage.setItem(key, value);
   }
 
-  private getCachedFsPersonId(memorialId: string): string | undefined {
-    return localStorage.getItem(`fs.${memorialId}.pid`) || undefined;
-  }
+  //
+  // Style Setup
+  //
 
-  private setCachedFsPersonId(memorialId: string, fsPersonId: string): void {
-    localStorage.setItem(`fs.${memorialId}.pid`, fsPersonId);
-  }
-
-  private addSpinClassStyle(): void {
+  private setupStyles(): void {
     const style = document.createElement('style');
     style.innerHTML = `
-      .spin {
-        animation: spin 1s linear infinite;
+      .${FindAGravePage.CSS.BTN_GROUP} {
+        display: inline-block;
+        margin-left: 8px;
       }
-      @keyframes spin {
+      .${FindAGravePage.CSS.BTN_GROUP} a {
+        margin-right: 5px;
+        text-decoration: none;
+      }
+      .${FindAGravePage.CSS.SPIN_CONTAINER} {
+        display: inline-block;
+      }
+      .${FindAGravePage.CSS.SPIN} {
+        animation: fs-spin 1s linear infinite;
+        transform-origin: center;
+        display: inline-block;
+      }
+      @keyframes fs-spin {
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
       }
+      .${FindAGravePage.CSS.STATUS.DEFAULT} { color: inherit; }
+      .${FindAGravePage.CSS.STATUS.GRAY} { color: #888888; }
+      .${FindAGravePage.CSS.STATUS.ORANGE} { color: #FFA500; }
+      
+      /* Maintain status colors on hover */
+      .${FindAGravePage.CSS.BTN_GROUP} a.${FindAGravePage.CSS.STATUS.DEFAULT}:hover { color: inherit; }
+      .${FindAGravePage.CSS.BTN_GROUP} a.${FindAGravePage.CSS.STATUS.GRAY}:hover { color: #888888; }
+      .${FindAGravePage.CSS.BTN_GROUP} a.${FindAGravePage.CSS.STATUS.ORANGE}:hover { color: #FFA500; }
     `;
     document.head.appendChild(style);
   }

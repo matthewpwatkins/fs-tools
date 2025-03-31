@@ -50,7 +50,7 @@ export class Toast {
     toast.style.transition = 'all 0.3s ease-in-out';
     toast.style.display = 'flex';
     toast.style.flexDirection = 'column';
-    toast.style.opacity = '0.8';
+    toast.style.opacity = '0.9';
     
     // Make the toast clickable if URL is provided
     if (options.url) {
