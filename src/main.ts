@@ -60,7 +60,7 @@ async function main() {
   async function onFirstPageMatch(page: Page): Promise<void> {
     // Get current chrome extension version
     const newVersion = chrome.runtime.getManifest().version;
-    const oldVersion = localStorage.getItem('fs-tool-data-version');
+    const oldVersion = localStorage.getItem('fs-tool-data-version') || undefined;
     if (oldVersion !== newVersion) {
       await page.handleVersionUpgrade(oldVersion, newVersion);
       localStorage.setItem('fs-tool-data-version', newVersion);

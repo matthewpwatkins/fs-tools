@@ -21,9 +21,9 @@ const CACHE_NONE_VALUE = 'NONE';
  */
 interface MemorialData {
   memorialId: string;
-  recordId: string | null;
+  recordId?: string;
   recordStatus: IdStatus;
-  personId: string | null;
+  personId?: string;
   personStatus: IdStatus;
   isProcessing: boolean;
   elements: Set<HTMLElement>; // Changed to Set for more efficient lookup
@@ -61,7 +61,7 @@ export class FindAGravePage implements Page {
   private memorials = new Map<string, MemorialData>(); // Map of memorialId -> MemorialData
   private updateQueue: MemorialData[] = [];
   private isProcessingQueue = false;
-  private observer: MutationObserver | null = null;
+  private observer?: MutationObserver;
   
   constructor(
     private readonly fsSessionIdStorage: FsSessionIdStorage,
@@ -70,7 +70,7 @@ export class FindAGravePage implements Page {
     this.setupStyles();
   }
 
-  public async handleVersionUpgrade(oldVersion: string | null, newVersion: string): Promise<void> {
+  public async handleVersionUpgrade(oldVersion: string | undefined, newVersion: string): Promise<void> {
     // Clear localStorage if coming from version before 1.0.16
     if (!oldVersion || oldVersion < '1.0.16') {
       console.log(`Data version upgrade detected: ${oldVersion} -> ${newVersion}. Clearing local storage`);
@@ -96,7 +96,7 @@ export class FindAGravePage implements Page {
     console.log('FindAGravePage - onPageExit');
     if (this.observer) {
       this.observer.disconnect();
-      this.observer = null;
+      this.observer = undefined;
     }
   }
 
@@ -154,25 +154,21 @@ export class FindAGravePage implements Page {
     });
   }
 
-  private extractMemorialIdFromUrl(url: string): string | null {
-    try {
-      const urlObj = new URL(url, window.location.origin);
-      return this.extractMemorialIdFromPath(urlObj.pathname);
-    } catch (e) {
-      return null;
-    }
+  private extractMemorialIdFromUrl(url: string): string | undefined {
+    const urlObj = new URL(url, window.location.origin);
+    return this.extractMemorialIdFromPath(urlObj.pathname);
   }
 
-  private extractMemorialIdFromLocation(): string | null {
+  private extractMemorialIdFromLocation(): string | undefined {
     return this.extractMemorialIdFromPath(document.location.pathname);
   }
 
-  private extractMemorialIdFromPath(path: string): string | null {
+  private extractMemorialIdFromPath(path: string): string | undefined {
     const pathComponents = path.split('/').filter(c => c.length > 0);
     
     // Path should be /memorial/{id}/{name}
     if (pathComponents.length !== 3 || pathComponents[0] !== 'memorial') {
-      return null;
+      return undefined;
     }
 
     const memorialId = pathComponents[1];
@@ -180,12 +176,12 @@ export class FindAGravePage implements Page {
     
     // Validate memorial ID format (numbers only)
     if (!memorialId.match(FindAGravePage.MEMORIAL_ID_REGEX)) {
-      return null;
+      return undefined;
     }
 
     // Skip non-memorial paths
     if (FindAGravePage.NON_MEMORIAL_PATHS.has(memorialName)) {
-      return null;
+      return undefined;
     }
 
     return memorialId;
@@ -208,20 +204,37 @@ export class FindAGravePage implements Page {
       // Add this element to the existing memorial's elements set
       memorial.elements.add(element);
     } else {
-      // Get data from local storage
-      const cachedRecordId = this.getCachedValue(`fs.${memorialId}.rid`);
-      const cachedPersonId = this.getCachedValue(`fs.${memorialId}.pid`);
-      
-      // Create new memorial data with a Set for elements
       memorial = {
         memorialId,
-        recordId: cachedRecordId !== CACHE_NONE_VALUE ? cachedRecordId : null,
-        recordStatus: cachedRecordId ? IdStatus.FOUND : IdStatus.UNKNOWN,
-        personId: cachedPersonId !== CACHE_NONE_VALUE ? cachedPersonId : null,
-        personStatus: cachedPersonId ? IdStatus.FOUND : IdStatus.UNKNOWN,
+        recordId: undefined,
+        recordStatus: IdStatus.UNKNOWN,
+        personId: undefined,
+        personStatus: IdStatus.UNKNOWN,
         isProcessing: false,
-        elements: new Set([element])
-      };
+        elements: new Set([element]),
+      }
+
+      // Get record from local storage
+      const cachedRecordId = this.getCachedValue(`fs.${memorialId}.rid`);
+      if (cachedRecordId) {
+        if (cachedRecordId === CACHE_NONE_VALUE) {
+          memorial.recordStatus = IdStatus.NONE;
+        } else {
+          memorial.recordId = cachedRecordId;
+          memorial.recordStatus = IdStatus.FOUND;
+        }
+      }
+
+      // Get person from local storage
+      const cachedPersonId = this.getCachedValue(`fs.${memorialId}.pid`);
+      if (cachedPersonId) {
+        if (cachedPersonId === CACHE_NONE_VALUE) {
+          memorial.personStatus = IdStatus.NONE;
+        } else {
+          memorial.personId = cachedPersonId;
+          memorial.personStatus = IdStatus.FOUND;
+        }
+      }
       
       this.memorials.set(memorialId, memorial);
     }
@@ -477,7 +490,7 @@ export class FindAGravePage implements Page {
         memorial.recordStatus = IdStatus.FOUND;
         this.setCachedValue(`fs.${memorial.memorialId}.rid`, recordId);
       } else {
-        memorial.recordId = null;
+        memorial.recordId = undefined;
         memorial.recordStatus = IdStatus.NONE;
         this.setCachedValue(`fs.${memorial.memorialId}.rid`, CACHE_NONE_VALUE);
       }
@@ -507,7 +520,7 @@ export class FindAGravePage implements Page {
         memorial.personStatus = IdStatus.FOUND;
         this.setCachedValue(`fs.${memorial.memorialId}.pid`, personId);
       } else {
-        memorial.personId = null;
+        memorial.personId = undefined;
         memorial.personStatus = IdStatus.NONE;
         this.setCachedValue(`fs.${memorial.memorialId}.pid`, CACHE_NONE_VALUE);
       }
@@ -521,8 +534,8 @@ export class FindAGravePage implements Page {
   // Storage Helpers
   //
 
-  private getCachedValue(key: string): string | null {
-    return localStorage.getItem(key);
+  private getCachedValue(key: string): string | undefined {
+    return localStorage.getItem(key) || undefined;
   }
 
   private setCachedValue(key: string, value: string): void {

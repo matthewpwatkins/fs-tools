@@ -18,7 +18,7 @@ export class BillionGravesGravePage implements Page {
     return false;
   }
 
-  public async handleVersionUpgrade(oldVersion: string | null, newVersion: string): Promise<void> {
+  public async handleVersionUpgrade(oldVersion: string | undefined, newVersion: string): Promise<void> {
     // Do nothing
   }
 
