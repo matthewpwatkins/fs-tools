@@ -315,7 +315,12 @@ export class FindAGravePage implements Page {
         personLink = document.createElement('a');
         personLink.className = FindAGravePage.CSS.PERSON_LINK;
         personLink.target = '_blank';
-        personLink.onclick = (e) => e.stopPropagation();
+        personLink.onclick = (e) => {
+          e.stopPropagation();
+          if (memorial.personStatus !== IdStatus.FOUND) {
+            e.preventDefault();
+          }
+        };
         personLink.innerHTML = PERSON_ICON_HTML;
         btnGroup.appendChild(personLink);
       }
@@ -374,14 +379,18 @@ export class FindAGravePage implements Page {
       case IdStatus.UNKNOWN:
         recordLink.classList.add(FindAGravePage.CSS.STATUS.GRAY);
         recordLink.href = this.getRecordSearchUrl(memorial.memorialId);
+        recordLink.title = 'Searching FamilySearch for this record, please wait...';
         break;
       case IdStatus.FOUND:
         recordLink.classList.add(FindAGravePage.CSS.STATUS.DEFAULT);
         recordLink.href = `https://www.familysearch.org/ark:/61903/1:1:${memorial.recordId}`;
+        recordLink.title = 'View record in FamilySearch';
         break;
       case IdStatus.NONE:
         recordLink.classList.add(FindAGravePage.CSS.STATUS.ORANGE);
         recordLink.href = this.getRecordSearchUrl(memorial.memorialId);
+        recordLink.title = 'No record found in FamilySearch';
+        recordLink.style.cursor = 'default';
         break;
     }
 
@@ -389,21 +398,24 @@ export class FindAGravePage implements Page {
     switch (memorial.personStatus) {
       case IdStatus.UNKNOWN:
         personLink.classList.add(FindAGravePage.CSS.STATUS.GRAY);
-        personLink.style.pointerEvents = 'none';
         personLink.href = '#';
         personLink.style.display = '';
+        personLink.title = memorial.recordStatus === IdStatus.UNKNOWN ? 'Searching, please wait...' : (memorial.recordStatus === IdStatus.NONE ? 'No record found in FamilySearch' : 'You are not logged into FamilySearch');
+        personLink.style.cursor = 'default';
         break;
       case IdStatus.FOUND:
         personLink.classList.add(FindAGravePage.CSS.STATUS.DEFAULT);
-        personLink.style.pointerEvents = 'auto';
         personLink.href = `https://www.familysearch.org/tree/person/details/${memorial.personId}`;
         personLink.style.display = '';
+        personLink.title = 'View person in FamilySearch';
+        personLink.style.cursor = 'pointer';
         break;
       case IdStatus.NONE:
         personLink.classList.add(FindAGravePage.CSS.STATUS.ORANGE);
-        personLink.style.pointerEvents = 'none';
         personLink.href = '#';
         personLink.style.display = '';
+        personLink.title = 'No person attached to this record in FamilySearch';
+        personLink.style.cursor = 'default';
         break;
     }
 
