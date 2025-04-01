@@ -55,6 +55,7 @@ export class FindAGravePage implements Page {
   private static readonly NON_MEMORIAL_PATHS = new Set([
     'search', 'edit', 'edit#gps-location', 'sponsor', 'memorial'
   ]);
+  private static readonly MIN_SPINNER_TIME_MS = 500;
   
   // Memory and state management
   private memorials = new Map<string, MemorialData>(); // Map of memorialId -> MemorialData
@@ -77,21 +78,21 @@ export class FindAGravePage implements Page {
     }
   }
 
-  async isMatch(url: URL): Promise<boolean> {
+  public async isMatch(url: URL): Promise<boolean> {
     return url.hostname.toLowerCase().endsWith('findagrave.com');
   }
 
-  requiresAuthenticatedSessionId(): boolean {
+  public requiresAuthenticatedSessionId(): boolean {
     return true;
   }
 
-  async onPageEnter(): Promise<void> {
+  public async onPageEnter(): Promise<void> {
     console.log('FindAGravePage - onPageEnter');
     this.setupMutationObserver();
     this.scanForMemorials();
   }
 
-  async onPageExit(): Promise<void> {
+  public async onPageExit(): Promise<void> {
     console.log('FindAGravePage - onPageExit');
     if (this.observer) {
       this.observer.disconnect();
@@ -99,7 +100,7 @@ export class FindAGravePage implements Page {
     }
   }
 
-  async onPageContentUpdate(): Promise<void> {
+  public async onPageContentUpdate(): Promise<void> {
     this.scanForMemorials();
   }
 
@@ -439,7 +440,8 @@ export class FindAGravePage implements Page {
   }
 
   private async processMemorial(memorial: MemorialData, forceLookup = false): Promise<void> {
-    this.markProcessing(memorial, true);    
+    this.markProcessing(memorial, true);
+    const startSpinMs = Date.now();
     try {
       // Process record ID if unknown
       if (forceLookup || memorial.recordStatus === IdStatus.UNKNOWN) {
@@ -451,8 +453,12 @@ export class FindAGravePage implements Page {
         await this.lookupPersonId(memorial);
       }
     } finally {
-      this.markProcessing(memorial, false);
       this.renderMemorialLinks(memorial);
+      const elapsedTime = Date.now() - startSpinMs;
+      const stopSpinDelay = Math.max(0, FindAGravePage.MIN_SPINNER_TIME_MS - elapsedTime);
+      setTimeout(() => {
+        this.markProcessing(memorial, false);
+      }, stopSpinDelay);
     }
   }
 
@@ -551,13 +557,13 @@ export class FindAGravePage implements Page {
         100% { transform: rotate(360deg); }
       }
       .${FindAGravePage.CSS.STATUS.DEFAULT} { color: inherit; }
-      .${FindAGravePage.CSS.STATUS.GRAY} { color: #888888; }
-      .${FindAGravePage.CSS.STATUS.ORANGE} { color: #FFA500; }
+      .${FindAGravePage.CSS.STATUS.GRAY} { color: #888888 !important; }
+      .${FindAGravePage.CSS.STATUS.ORANGE} { color: #FFA500 !important; }
       
       /* Maintain status colors on hover */
       .${FindAGravePage.CSS.BTN_GROUP} a.${FindAGravePage.CSS.STATUS.DEFAULT}:hover { color: inherit; }
-      .${FindAGravePage.CSS.BTN_GROUP} a.${FindAGravePage.CSS.STATUS.GRAY}:hover { color: #888888; }
-      .${FindAGravePage.CSS.BTN_GROUP} a.${FindAGravePage.CSS.STATUS.ORANGE}:hover { color: #FFA500; }
+      .${FindAGravePage.CSS.BTN_GROUP} a.${FindAGravePage.CSS.STATUS.GRAY}:hover { color: #888888 !important; }
+      .${FindAGravePage.CSS.BTN_GROUP} a.${FindAGravePage.CSS.STATUS.ORANGE}:hover { color: #FFA500 !important; }
     `;
     document.head.appendChild(style);
   }
