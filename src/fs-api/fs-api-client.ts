@@ -49,7 +49,7 @@ export class FsApiClient {
 
   public async getPerson(personId: string, includeRelatives?: boolean): Promise<GedcomX> {
     return await this.request({
-      authLevel: AuthLevel.NONE,
+      authLevel: AuthLevel.AUTHENTICATED,
       baseUrl: FsApiClient.API_BASE_URL,
       path: `/platform/tree/persons/${personId}`,
       headers: {
