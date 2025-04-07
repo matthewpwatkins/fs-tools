@@ -1,4 +1,4 @@
-import { FsSessionIdStorage } from "./fs-session-id-storage";
+import { DataStorage } from "./data-storage";
 import { TokenResponse } from "./models/token-response";
 import { SearchRecordsResponse } from "./models/search-records-response";
 import { SourceAttachment } from "./models/source-attachment";
@@ -19,12 +19,12 @@ export class FsApiClient {
   private static readonly IP_ADDRESS = '216.49.186.122';
   private static readonly GEDCOMX_JSON_TYPE = 'application/x-gedcomx-v1+json';
   
-  private sessionIdStorage: FsSessionIdStorage;
+  private dataStorage: DataStorage;
   private anonymousRequestCounter = 0;
   private static readonly ANONYMOUS_REFRESH_THRESHOLD = 100;
   
-  constructor(fsSessionIdStorage: FsSessionIdStorage) {
-    this.sessionIdStorage = fsSessionIdStorage;
+  constructor(fsSessionIdStorage: DataStorage) {
+    this.dataStorage = fsSessionIdStorage;
   }
 
   /**
@@ -44,7 +44,7 @@ export class FsApiClient {
       })
     });
 
-    await this.sessionIdStorage.setAnonymousSessionId(res.access_token);
+    await this.dataStorage.setAnonymousSessionId(res.access_token);
   }
 
   public async getPerson(personId: string, includeRelatives?: boolean): Promise<GedcomX> {
@@ -115,10 +115,10 @@ export class FsApiClient {
         }
         
         // Always use anonymous session ID for anonymous requests
-        let anonymousSessionId = await this.sessionIdStorage.getAnonymousSessionId();
+        let anonymousSessionId = await this.dataStorage.getAnonymousSessionId();
         if (!anonymousSessionId) {
           await this.fetchNewAnonymousSessionId();
-          anonymousSessionId = await this.sessionIdStorage.getAnonymousSessionId()!;
+          anonymousSessionId = await this.dataStorage.getAnonymousSessionId()!;
         }
         
         // Increment counter after getting/refreshing the session ID
@@ -127,7 +127,7 @@ export class FsApiClient {
         baseHeaders['Authorization'] = `Bearer ${anonymousSessionId}`;
         break;
       case AuthLevel.AUTHENTICATED:
-        const authenticatedSessionId = await this.sessionIdStorage.getAuthenticatedSessionId();
+        const authenticatedSessionId = await this.dataStorage.getAuthenticatedSessionId();
         if (!authenticatedSessionId) {
           throw new Error('An authenticated session ID is required but not available');
         }
@@ -179,7 +179,7 @@ export class FsApiClient {
         if (authLevel === AuthLevel.AUTHENTICATED) {
           // If the session is authenticated but expired, we need to clear the session ID
           console.warn('Authenticated session ID expired. Clearing it.');
-          await this.sessionIdStorage.setAuthenticatedSessionId(undefined);
+          await this.dataStorage.setAuthenticatedSessionId(undefined);
         } else if (authLevel === AuthLevel.ANONYMOUS && allowRetry) {
           // If the session is anonymous and expired, we need to refresh it
           console.warn('Anonymous session ID expired. Refreshing it.');

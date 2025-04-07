@@ -1,4 +1,4 @@
-import { FsSessionIdStorage } from "../../fs-api/fs-session-id-storage";
+import { DataStorage } from "../../fs-api/data-storage";
 import { Page } from "../../page";
 import { getFamilySearchSessionIdFromCookie } from "../../util/cookie-utils";
 
@@ -7,11 +7,11 @@ import { getFamilySearchSessionIdFromCookie } from "../../util/cookie-utils";
  * Adds a menu command to copy the session ID.
  */
 export class FamilySearchPage implements Page {
-  private readonly sessionIdStorage: FsSessionIdStorage;
+  private readonly dataStorage: DataStorage;
   private authenticatedSessionId?: string;
 
-  constructor(sessionIdStorage: FsSessionIdStorage) {
-    this.sessionIdStorage = sessionIdStorage;
+  constructor(sessionIdStorage: DataStorage) {
+    this.dataStorage = sessionIdStorage;
   }
   
   async isMatch(url: URL): Promise<boolean> {
@@ -43,7 +43,7 @@ export class FamilySearchPage implements Page {
     const currentSessionId = getFamilySearchSessionIdFromCookie();
     if (currentSessionId !== this.authenticatedSessionId) {
       this.authenticatedSessionId = currentSessionId;
-      await this.sessionIdStorage.setAuthenticatedSessionId(this.authenticatedSessionId);
+      await this.dataStorage.setAuthenticatedSessionId(this.authenticatedSessionId);
     }
   }
 }

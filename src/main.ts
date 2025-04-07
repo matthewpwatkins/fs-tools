@@ -8,22 +8,22 @@ import { FamilySearchPersonDetailsPage } from "./pages/familysearch/familysearch
 import { FamilySearchRecordPage } from "./pages/familysearch/familysearch-record-page";
 import { FamilySearchSearchResultsPage } from "./pages/familysearch/familysearch-search-results-page";
 import { FindAGravePage } from "./pages/findagrave/findagrave-page";
-import { ChromeExtensionFsSessionIdStorage } from "./fs-api/chrome-extension-fs-session-id-storage";
+import { ChromeExtensionDataStorage } from "./fs-api/chrome-extension-data-storage";
 import { Toast } from "./ui/toast";
 
 async function main() {
-  const fsSessionIdStorage = new ChromeExtensionFsSessionIdStorage();
-  console.log(`Authenticated session ID: ${await fsSessionIdStorage.getAuthenticatedSessionId()}`);
-  console.log(`Anonymous session ID: ${await fsSessionIdStorage.getAnonymousSessionId()}`);
-  const fsApiClient = new FsApiClient(fsSessionIdStorage);
+  const dataStorage = new ChromeExtensionDataStorage();
+  console.log(`Authenticated session ID: ${await dataStorage.getAuthenticatedSessionId()}`);
+  console.log(`Anonymous session ID: ${await dataStorage.getAnonymousSessionId()}`);
+  const fsApiClient = new FsApiClient(dataStorage);
   const ALL_PAGES: Page[] = [
     // new BillionGravesGravePage(),
-    new FamilySearchPage(fsSessionIdStorage),
+    new FamilySearchPage(dataStorage),
     new FamilySearchFilmPage(),
     new FamilySearchPersonDetailsPage(fsApiClient),
     new FamilySearchRecordPage(fsApiClient),
     new FamilySearchSearchResultsPage(),  
-    new FindAGravePage(fsSessionIdStorage, fsApiClient)
+    new FindAGravePage(dataStorage, fsApiClient)
   ];
   
   let currentURL: URL | undefined;
@@ -121,10 +121,10 @@ async function main() {
     childList: true,
     subtree: true,
   });
-  fsSessionIdStorage.subsribeToAuthenticatedSessionIdChanges('main', onAuthenticatedSessionIdChange);
+  dataStorage.subsribeToAuthenticatedSessionIdChanges('main', onAuthenticatedSessionIdChange);
   
   await onPageChange();
-  await onAuthenticatedSessionIdChange(await fsSessionIdStorage.getAuthenticatedSessionId());
+  await onAuthenticatedSessionIdChange(await dataStorage.getAuthenticatedSessionId());
 }
 
 main();

@@ -2,7 +2,7 @@ import { FINDAGRAVE_COLLECTION_ID } from "../../constants";
 import { FS_FAVICON_URL, PERSON_ICON_HTML, RECORD_ICON_HTML, REFRESH_ICON_HTML, styleIcon } from "../../icons";
 import { FsApiClient } from "../../fs-api/fs-api-client";
 import { Page } from "../../page";
-import { FsSessionIdStorage } from "../../fs-api/fs-session-id-storage";
+import { DataStorage } from "../../fs-api/data-storage";
 
 /**
  * Status enum for record and person IDs
@@ -64,7 +64,7 @@ export class FindAGravePage implements Page {
   private observer?: MutationObserver;
   
   constructor(
-    private readonly fsSessionIdStorage: FsSessionIdStorage,
+    private readonly dataStorage: DataStorage,
     private readonly fsApiClient: FsApiClient
   ) {
     this.setupStyles();
@@ -191,58 +191,35 @@ export class FindAGravePage implements Page {
   // Memorial Management
   //
 
-  private addOrUpdateMemorial(element: HTMLElement, memorialId: string): void {
-    // Get existing memorial data or create new
+  private async addOrUpdateMemorial(element: HTMLElement, memorialId: string): Promise<void> {
     let memorial = this.memorials.get(memorialId);
-    
+
     if (memorial) {
-      // Skip if we already have this specific element tracked
-      if (memorial.elements.has(element)) {
-        return;
-      }
-      
-      // Add this element to the existing memorial's elements set
+      if (memorial.elements.has(element)) return;
       memorial.elements.add(element);
     } else {
       memorial = {
         memorialId,
-        recordId: undefined,
+        recordId: await this.dataStorage.getMemorialRecordId(memorialId),
         recordStatus: IdStatus.UNKNOWN,
-        personId: undefined,
+        personId: await this.dataStorage.getMemorialPersonId(memorialId),
         personStatus: IdStatus.UNKNOWN,
         isProcessing: false,
         elements: new Set([element]),
+      };
+
+      if (memorial.recordId) {
+        memorial.recordStatus = memorial.recordId === 'NONE' ? IdStatus.NONE : IdStatus.FOUND;
+      }
+      if (memorial.personId) {
+        memorial.personStatus = memorial.personId === 'NONE' ? IdStatus.NONE : IdStatus.FOUND;
       }
 
-      // Get record from local storage
-      const cachedRecordId = this.getCachedValue(`fs.${memorialId}.rid`);
-      if (cachedRecordId) {
-        if (cachedRecordId === CACHE_NONE_VALUE) {
-          memorial.recordStatus = IdStatus.NONE;
-        } else {
-          memorial.recordId = cachedRecordId;
-          memorial.recordStatus = IdStatus.FOUND;
-        }
-      }
-
-      // Get person from local storage
-      const cachedPersonId = this.getCachedValue(`fs.${memorialId}.pid`);
-      if (cachedPersonId) {
-        if (cachedPersonId === CACHE_NONE_VALUE) {
-          memorial.personStatus = IdStatus.NONE;
-        } else {
-          memorial.personId = cachedPersonId;
-          memorial.personStatus = IdStatus.FOUND;
-        }
-      }
-      
       this.memorials.set(memorialId, memorial);
     }
-    
-    // Render UI initially
+
     this.renderMemorialLinks(memorial, element);
-    
-    // Queue for update if needed
+
     if (memorial.recordStatus === IdStatus.UNKNOWN || 
         (memorial.recordStatus === IdStatus.FOUND && memorial.personStatus === IdStatus.UNKNOWN)) {
       this.queueForUpdate(memorial);
@@ -493,65 +470,41 @@ export class FindAGravePage implements Page {
         'q.externalRecordId': memorial.memorialId,
         'f.collectionId': FINDAGRAVE_COLLECTION_ID
       }));
-      
-      console.log(`Search records response for memorial ID ${memorial.memorialId}`, searchRecordsResponse);
-      
+
       if (searchRecordsResponse?.entries?.length === 1) {
         const recordId = searchRecordsResponse.entries[0].id;
         memorial.recordId = recordId;
         memorial.recordStatus = IdStatus.FOUND;
-        this.setCachedValue(`fs.${memorial.memorialId}.rid`, recordId);
+        await this.dataStorage.setMemorialRecordId(memorial.memorialId, recordId);
       } else {
         memorial.recordId = undefined;
         memorial.recordStatus = IdStatus.NONE;
-        this.setCachedValue(`fs.${memorial.memorialId}.rid`, CACHE_NONE_VALUE);
+        await this.dataStorage.setMemorialRecordId(memorial.memorialId, CACHE_NONE_VALUE);
       }
     } catch (error) {
       console.error('Error looking up record ID', error);
-      // Don't update status on error, will retry later
     }
   }
 
   private async lookupPersonId(memorial: MemorialData): Promise<void> {
     try {
-      // Only proceed if we have an authenticated session
-      if (!await this.fsSessionIdStorage.getAuthenticatedSessionId()) {
-        return;
-      }
-      
+      if (!await this.dataStorage.getAuthenticatedSessionId()) return;
+
       const attachments = await this.fsApiClient.getAttachmentsForRecord(memorial.recordId!);
-      
-      console.log(
-        `Attachments response for memorialID ${memorial.memorialId} (record ID ${memorial.recordId})`, 
-        attachments
-      );
-      
+
       if (attachments && attachments.length > 0 && attachments[0].persons?.length > 0) {
         const personId = attachments[0].persons[0].entityId;
         memorial.personId = personId;
         memorial.personStatus = IdStatus.FOUND;
-        this.setCachedValue(`fs.${memorial.memorialId}.pid`, personId);
+        await this.dataStorage.setMemorialPersonId(memorial.memorialId, personId);
       } else {
         memorial.personId = undefined;
         memorial.personStatus = IdStatus.NONE;
-        this.setCachedValue(`fs.${memorial.memorialId}.pid`, CACHE_NONE_VALUE);
+        await this.dataStorage.setMemorialPersonId(memorial.memorialId, CACHE_NONE_VALUE);
       }
     } catch (error) {
       console.error('Error looking up person ID', error);
-      // Don't update status on error, will retry later
     }
-  }
-
-  //
-  // Storage Helpers
-  //
-
-  private getCachedValue(key: string): string | undefined {
-    return localStorage.getItem(key) || undefined;
-  }
-
-  private setCachedValue(key: string, value: string): void {
-    localStorage.setItem(key, value);
   }
 
   //
