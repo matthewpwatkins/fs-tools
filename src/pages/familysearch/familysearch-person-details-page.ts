@@ -31,11 +31,11 @@ export class FamilySearchPersonDetailsPage implements Page {
   }
 
   async onPageEnter(): Promise<void> {
-    console.log('FamilySearchPersonDetailsPage - onPageEnter');
+    
   }
 
   async onPageExit(): Promise<void> {
-    console.log('FamilySearchPersonDetailsPage - onPageExit');
+    
   }
 
   async onPageContentUpdate(updateID: string): Promise<void> {
@@ -58,7 +58,6 @@ export class FamilySearchPersonDetailsPage implements Page {
         return;
       }
   
-      console.log('Adding sources grid link');
       sourcesGridLink = this.createSourcesGridLinkFrom(sourcesLink as HTMLAnchorElement);
       sourcesLink.parentNode?.insertBefore(sourcesGridLink, sourcesLink.nextSibling);
     }
@@ -100,7 +99,6 @@ export class FamilySearchPersonDetailsPage implements Page {
       }
 
       const gx = await this.fsApiClient.getPerson(personId, true);
-      console.log('GX', gx);
 
       recordSearchLink.href = buildSearchUrlForPerson('record', gx, personId, SearchDetailLevel.StandardWithSpouse).toString();
       recordSearchSpan.textContent = 'FamilySearch - Records';

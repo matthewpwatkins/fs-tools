@@ -23,11 +23,11 @@ export class FamilySearchFilmPage implements Page {
   }
 
   async onPageEnter(): Promise<void> {
-    console.log('FamilySearchFilmPage - onPageEnter');
+    
   }
 
   async onPageExit(): Promise<void> {
-    console.log('FamilySearchFilmPage - onPageExit');
+    
   }
 
   async onPageContentUpdate(updateID: string): Promise<void> {

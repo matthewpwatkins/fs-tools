@@ -27,12 +27,12 @@ export class FamilySearchPage implements Page {
   }
 
   async onPageEnter(): Promise<void> {
-    console.log('FamilySearchPage - onPageEnter');
+    
     await this.updateSessionId();
   }
 
   async onPageExit(): Promise<void> {
-    console.log('FamilySearchPage - onPageExit');
+    
   }
 
   async onPageContentUpdate(updateID: string): Promise<void> {

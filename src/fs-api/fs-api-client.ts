@@ -172,17 +172,18 @@ export class FsApiClient {
       requestInit.method = 'GET';
     }
 
-    const response = await fetch(url.toString(), requestInit);
+    const urlString = url.toString();
+    const response = await fetch(urlString, requestInit);
 
     if (!response.ok) {
       if (response.status === 401 || response.status === 403) {
         if (authLevel === AuthLevel.AUTHENTICATED) {
           // If the session is authenticated but expired, we need to clear the session ID
-          console.warn('Authenticated session ID expired. Clearing it.');
+          console.warn(`Authenticated session ID expired fetching ${urlString}. Clearing it.`);
           await this.dataStorage.setAuthenticatedSessionId(undefined);
         } else if (authLevel === AuthLevel.ANONYMOUS && allowRetry) {
           // If the session is anonymous and expired, we need to refresh it
-          console.warn('Anonymous session ID expired. Refreshing it.');
+          console.warn(`Anonymous session ID expired fetching ${urlString}. Refreshing it.`);
           await this.fetchNewAnonymousSessionId();
           return await this.request({ authLevel, baseUrl, path, headers, body, queryStringParams, allowRetry: false });
         }

@@ -23,11 +23,11 @@ export class BillionGravesGravePage implements Page {
   }
 
   async onPageEnter(): Promise<void> {
-    console.log('BillionGravesGravePage - onPageEnter');
+    
   }
 
   async onPageExit(): Promise<void> {
-    console.log('BillionGravesGravePage - onPageExit');
+    
   }
 
   async onPageContentUpdate(updateID: string): Promise<void> {

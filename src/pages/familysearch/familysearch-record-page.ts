@@ -27,11 +27,11 @@ export class FamilySearchRecordPage implements Page {
   }
 
   async onPageEnter(): Promise<void> {
-    console.log('FamilySearchRecordPage - onPageEnter');
+    
   }
 
   async onPageExit(): Promise<void> {
-    console.log('FamilySearchRecordPage - onPageExit');
+    
   }
 
   async onPageContentUpdate(updateID: string): Promise<void> {

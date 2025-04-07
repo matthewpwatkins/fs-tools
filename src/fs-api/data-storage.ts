@@ -1,4 +1,10 @@
+import { FindAGraveMemorialData } from "../models/findagrave-memorial-data";
+
 export interface DataStorage {
+  getLatestStrageVersionId(): Promise<string | undefined>;
+  setLatestStrageVersionId(versionId: string): Promise<void>;
+  clear(): Promise<void>;
+
   // Anonymous session ID
   getAnonymousSessionId(): Promise<string | undefined>;
   setAnonymousSessionId(sessionId?: string): Promise<void>;
@@ -9,10 +15,7 @@ export interface DataStorage {
   setAuthenticatedSessionId(sessionId?: string): Promise<void>;
   subsribeToAuthenticatedSessionIdChanges(subscriptionId: string, callback: (sessionId?: string) => Promise<void>): void;
 
-  // Memorial record and person IDs
-  getMemorialRecordId(memorialId: string): Promise<string | undefined>;
-  setMemorialRecordId(memorialId: string, recordId: string | undefined): Promise<void>;
-
-  getMemorialPersonId(memorialId: string): Promise<string | undefined>;
-  setMemorialPersonId(memorialId: string, personId: string | undefined): Promise<void>;
+  // Memorial data (record and person IDs)
+  getFindAGraveMemorialData(memorialId: string): Promise<FindAGraveMemorialData | undefined>;
+  setFindAGraveMemorialData(memorialId: string, data: FindAGraveMemorialData | undefined): Promise<void>;
 }

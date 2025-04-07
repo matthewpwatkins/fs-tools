@@ -1,99 +1,120 @@
 import { DataStorage } from "./data-storage";
+import { FindAGraveMemorialData } from "../models/findagrave-memorial-data";
+
+// Define constants for magic strings
+const LATEST_STORAGE_VERSION_ID_KEY = 'latest-storage-version-id';
+const ANONYMOUS_SESSION_ID_KEY = 'anonymous-fs-session-id';
+const AUTHENTICATED_SESSION_ID_KEY = 'authenticated-fs-session-id';
+const ALL_SESSION_ID_KEYS = [ANONYMOUS_SESSION_ID_KEY, AUTHENTICATED_SESSION_ID_KEY];
+const FIND_A_GRAVE_MEMORIAL_PREFIX = 'find-a-grave-memorial.';
 
 type DataCallback<T> = (value?: T) => Promise<void>;
 
 export class ChromeExtensionDataStorage implements DataStorage {
-  private dataCache: Map<string, any> = new Map();
-  private dataLoadedStates: Map<string, boolean> = new Map();
-  private changeCallbacks: Map<string, Map<string, DataCallback<any>>> = new Map();
+  private sessionIdCache: Map<string, string | undefined> = new Map();
+  private sessionIdCallbacks: Map<string, Map<string, DataCallback<any>>> = new Map();
 
   constructor() {
     chrome.storage.local.onChanged.addListener((changes) => {
-      for (const [key, { newValue }] of Object.entries(changes)) {
-        const currentValue = this.dataCache.get(key);
-        if (currentValue !== newValue) {
-          this.dataCache.set(key, newValue);
-          this.changeCallbacks.get(key)?.forEach(callback => {
+      for (const key of ALL_SESSION_ID_KEYS) {
+        if (changes[key]) {
+          const { newValue } = changes[key];
+          this.sessionIdCache.set(key, newValue);
+          this.sessionIdCallbacks.get(key)?.forEach(callback => {
             callback(newValue);
           });
         }
-        this.dataLoadedStates.set(key, true);
       }
     });
   }
 
-  // Type-specific methods
-  public getAnonymousSessionId(): Promise<string | undefined> {
-    return this.get<string>('anonymous-fs-session-id');
+  public async getLatestStrageVersionId(): Promise<string | undefined> {
+    return (await chrome.storage.local.get(LATEST_STORAGE_VERSION_ID_KEY))[LATEST_STORAGE_VERSION_ID_KEY];
   }
 
-  public setAnonymousSessionId(sessionId?: string): Promise<void> {
-    return this.set<string>('anonymous-fs-session-id', sessionId);
+  public async setLatestStrageVersionId(versionId: string): Promise<void> {
+    await chrome.storage.local.set({ LATEST_STORAGE_VERSION_ID_KEY: versionId });
+  }
+
+  public async clear(): Promise<void> {
+    await chrome.storage.local.clear();
+    this.sessionIdCache.clear();
+    this.sessionIdCallbacks.clear();
+  }
+
+  // Anonymous session ID
+  public async getAnonymousSessionId(): Promise<string | undefined> {
+    if (this.sessionIdCache.has(ANONYMOUS_SESSION_ID_KEY)) {
+      return this.sessionIdCache.get(ANONYMOUS_SESSION_ID_KEY);
+    }
+    const sessionId = await this.get(ANONYMOUS_SESSION_ID_KEY);
+    this.sessionIdCache.set(ANONYMOUS_SESSION_ID_KEY, sessionId);
+    return sessionId;
+  }
+
+  public async setAnonymousSessionId(sessionId?: string): Promise<void> {
+    await this.set<string>(ANONYMOUS_SESSION_ID_KEY, sessionId);
+    this.sessionIdCache.set(ANONYMOUS_SESSION_ID_KEY, sessionId);
   }
 
   public subsribeToAnonymousSessionIdChanges(subscriptionId: string, callback: DataCallback<string>): void {
-    this.subscribe<string>('anonymous-fs-session-id', subscriptionId, callback);
+    this.subscribe<string>(ANONYMOUS_SESSION_ID_KEY, subscriptionId, callback);
   }
 
-  public getAuthenticatedSessionId(): Promise<string | undefined> {
-    return this.get<string>('authenticated-fs-session-id');
+  // Authenticated session ID
+  public async getAuthenticatedSessionId(): Promise<string | undefined> {
+    if (this.sessionIdCache.has(AUTHENTICATED_SESSION_ID_KEY)) {
+      return this.sessionIdCache.get(AUTHENTICATED_SESSION_ID_KEY);
+    }
+    const sessionId = await this.get(AUTHENTICATED_SESSION_ID_KEY);
+    this.sessionIdCache.set(AUTHENTICATED_SESSION_ID_KEY, sessionId);
+    return sessionId;
   }
 
-  public setAuthenticatedSessionId(sessionId?: string): Promise<void> {
-    return this.set<string>('authenticated-fs-session-id', sessionId);
+  public async setAuthenticatedSessionId(sessionId?: string): Promise<void> {
+    await this.set<string>(AUTHENTICATED_SESSION_ID_KEY, sessionId);
+    this.sessionIdCache.set(AUTHENTICATED_SESSION_ID_KEY, sessionId);
   }
 
   public subsribeToAuthenticatedSessionIdChanges(subscriptionId: string, callback: DataCallback<string>): void {
-    this.subscribe<string>('authenticated-fs-session-id', subscriptionId, callback);
+    this.subscribe<string>(AUTHENTICATED_SESSION_ID_KEY, subscriptionId, callback);
   }
 
-  public async getMemorialRecordId(memorialId: string): Promise<string | undefined> {
-    return this.get<string>(`fs.${memorialId}.rid`);
+  // FindAGrave Memorial data
+  public async getFindAGraveMemorialData(memorialId: string): Promise<FindAGraveMemorialData | undefined> {
+    const storageRecord = await chrome.storage.local.get(`${FIND_A_GRAVE_MEMORIAL_PREFIX}${memorialId}`);
+    const value = storageRecord[`${FIND_A_GRAVE_MEMORIAL_PREFIX}${memorialId}`];
+    return value ? JSON.parse(value) : undefined;
   }
 
-  public async setMemorialRecordId(memorialId: string, recordId: string | undefined): Promise<void> {
-    await this.set<string>(`fs.${memorialId}.rid`, recordId);
-  }
-
-  public async getMemorialPersonId(memorialId: string): Promise<string | undefined> {
-    return this.get<string>(`fs.${memorialId}.pid`);
-  }
-
-  public async setMemorialPersonId(memorialId: string, personId: string | undefined): Promise<void> {
-    await this.set<string>(`fs.${memorialId}.pid`, personId);
-  }
-
-  // Common helper methods
-  private async get<T>(key: string): Promise<T | undefined> {
-    if (this.dataLoadedStates.get(key)) {
-      return this.dataCache.get(key);
+  public async setFindAGraveMemorialData(memorialId: string, data: FindAGraveMemorialData | undefined): Promise<void> {
+    if (data === null || data === undefined) {
+      await chrome.storage.local.remove(`${FIND_A_GRAVE_MEMORIAL_PREFIX}${memorialId}`);
+    } else {
+      await chrome.storage.local.set({ [`${FIND_A_GRAVE_MEMORIAL_PREFIX}${memorialId}`]: JSON.stringify(data) });
     }
-
-    const storageRecord = await chrome.storage.local.get(key);
-    const value = storageRecord[key];
-    this.dataCache.set(key, value);
-    this.dataLoadedStates.set(key, true);
-    return value;
   }
 
-  private async set<T>(key: string, value: T | undefined): Promise<void> {
-    if (value === null) {
+  // #region Private helpers
+
+  private async get(key: string): Promise<string | undefined> {
+    return (await chrome.storage.local.get(key))[key];
+  }
+
+  private async set<T>(key: string, value: string | undefined): Promise<void> {
+    if (value === null || value === undefined) {
       await chrome.storage.local.remove(key);
     } else {
       await chrome.storage.local.set({ [key]: value });
     }
-
-    this.dataCache.set(key, value);
-    this.dataLoadedStates.set(key, true);
-    for (const callback of this.changeCallbacks.get(key)?.values() || []) {
-      await callback(value);
-    }
   }
 
   private subscribe<T>(key: string, subscriptionId: string, callback: DataCallback<T>): void {
-    if (!this.changeCallbacks.has(key)) {
-      this.changeCallbacks.set(key, new Map());
+    if (!this.sessionIdCallbacks.has(key)) {
+      this.sessionIdCallbacks.set(key, new Map());
     }
-    this.changeCallbacks.get(key)!.set(subscriptionId, callback);
+    this.sessionIdCallbacks.get(key)!.set(subscriptionId, callback);
   }
+
+  // #endregion
 }

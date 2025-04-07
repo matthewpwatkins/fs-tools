@@ -13,8 +13,7 @@ import { Toast } from "./ui/toast";
 
 async function main() {
   const dataStorage = new ChromeExtensionDataStorage();
-  console.log(`Authenticated session ID: ${await dataStorage.getAuthenticatedSessionId()}`);
-  console.log(`Anonymous session ID: ${await dataStorage.getAnonymousSessionId()}`);
+  
   const fsApiClient = new FsApiClient(dataStorage);
   const ALL_PAGES: Page[] = [
     // new BillionGravesGravePage(),
@@ -30,6 +29,17 @@ async function main() {
   const matchingPages: Set<Page> = new Set();
   let updateQueued = false;
   let updateInProgress: string | undefined;
+
+  // Get current chrome extension version
+  const newVersion = chrome.runtime.getManifest().version;
+  const oldVersion = await dataStorage.getLatestStrageVersionId();
+  if (oldVersion !== newVersion) {
+    if (!oldVersion || oldVersion < '1.0.16') {
+      console.log(`Data version upgrade detected: ${oldVersion} -> ${newVersion}. Clearing local storage`);
+      await dataStorage.clear();
+    }
+    dataStorage.setLatestStrageVersionId(newVersion);
+  }
 
   async function onPageChange() {
     const updateId = uuidv4().split('-')[1];
@@ -57,16 +67,6 @@ async function main() {
     }
   }
 
-  async function onFirstPageMatch(page: Page): Promise<void> {
-    // Get current chrome extension version
-    const newVersion = chrome.runtime.getManifest().version;
-    const oldVersion = localStorage.getItem('fs-tool-data-version') || undefined;
-    if (oldVersion !== newVersion) {
-      await page.handleVersionUpgrade(oldVersion, newVersion);
-      localStorage.setItem('fs-tool-data-version', newVersion);
-    }
-  }
-
   async function processUpdate(updateId: string) {
     const url = new URL(window.location.href);
     const urlChanged = url.href !== currentURL?.href;
@@ -74,7 +74,6 @@ async function main() {
       for (const page of ALL_PAGES) {
         if (await page.isMatch(url)) {
           if (!matchingPages.has(page)) {
-            await onFirstPageMatch(page);
             await page.onPageEnter();
             matchingPages.add(page);
           }
@@ -93,17 +92,12 @@ async function main() {
   }
 
   async function onAuthenticatedSessionIdChange(newSessionId: string | undefined): Promise<void> {
-    console.log(`Authenticated session ID changed: ${newSessionId}`);
     const matchingPagesArray = [...matchingPages];
-    console.log(`Matching pages: ${matchingPagesArray.map(page => page.constructor.name).join(', ')}`);
     const anyPagesToastable = matchingPagesArray.some(page => page.requiresAuthenticatedSessionId());
-    console.log(`Any pages toastable: ${anyPagesToastable}`);
     if (anyPagesToastable) {
       if (newSessionId) {
-        console.log('Authenticated session ID is set');
         Toast.hide();
       } else {
-        console.log('Authenticated session ID is not set');
         Toast.show({
           title: 'Authentication Required',
           message: 'Some FS Tools functionality may be limited on this page because you are not logged into FamilySearch on this browser. Click here to log in to FamilySearch. Then refresh this page.',
