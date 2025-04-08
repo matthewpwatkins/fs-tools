@@ -5,7 +5,7 @@ import { SearchRecordsResponse } from "./models/search-records-response";
 import { WEB_BASE_URL } from "./constants";
 
 export class AnonymousApiClient {
-  private static readonly RETRY_ERROR_STATUSES = new Set<number>([401, 403]);
+  private static readonly RETRY_ERROR_STATUSES = new Set<number>([401, 403, 429]);
   private static readonly ANONYMOUS_REFRESH_THRESHOLD = 100;
   private static readonly THROTTLE_TIME_MS = 250;
 
@@ -72,7 +72,7 @@ export class AnonymousApiClient {
     }
 
     response.throwIfNotOk();
-    
+
     return new Promise<T>((resolve) => setTimeout(() => {
       resolve(response.data!);
     }, AnonymousApiClient.THROTTLE_TIME_MS));
