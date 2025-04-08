@@ -454,14 +454,24 @@ export class FindAGravePage implements Page {
         'q.externalRecordId': memorial.memorialId,
         'f.collectionId': FINDAGRAVE_COLLECTION_ID
       }));
+      
+      const recordsCount = searchRecordsResponse?.entries?.length || 0;
+      if (recordsCount > 1) {
+        // Multiple records found. Search returns garbage if you hit it too much.
+        // This is like a 429 error.
+        await this.anonymousFsApiClient.fetchNewAnonymousSessionId();
+        throw new Error('Search returned multiple records. This is likely because we hit the API too fast. Take a break for a few minutes and refresh the page');
+      }
 
-      if (searchRecordsResponse?.entries?.length === 1) {
+      if (recordsCount === 0) {
+        // There is no record for this memorial in FS. Probably because it is so new.
+        memorial.data.recordId = undefined;
+        memorial.data.recordIdStatus = IdStatus.NONE;
+      } else {
+        // Single record as expected
         const recordId = searchRecordsResponse.entries[0].id;
         memorial.data.recordId = recordId;
         memorial.data.recordIdStatus = IdStatus.FOUND;
-      } else {
-        memorial.data.recordId = undefined;
-        memorial.data.recordIdStatus = IdStatus.NONE;
       }
       await this.dataStorage.setFindAGraveMemorialData(memorial.memorialId, memorial.data);
     } catch (error) {
