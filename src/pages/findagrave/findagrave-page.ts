@@ -1,9 +1,10 @@
 import { FINDAGRAVE_COLLECTION_ID } from "../../constants";
 import { FS_FAVICON_URL, PERSON_ICON_HTML, RECORD_ICON_HTML, REFRESH_ICON_HTML, styleIcon } from "../../icons";
-import { FsApiClient } from "../../fs-api/fs-api-client";
 import { Page } from "../../page";
 import { DataStorage } from "../../fs-api/data-storage";
 import { FindAGraveMemorialData, IdStatus } from "../../models/findagrave-memorial-data";
+import { AnonymousApiClient } from "../../fs-api/anonymous-api-client";
+import { AuthenticatedApiClient } from "../../fs-api/authenticated-api-client";
 
 /**
  * Memorial element data tracking
@@ -53,7 +54,8 @@ export class FindAGravePage implements Page {
   
   constructor(
     private readonly dataStorage: DataStorage,
-    private readonly fsApiClient: FsApiClient
+    private readonly anonymousFsApiClient: AnonymousApiClient,
+    private readonly authenticatedFsApiClient: AuthenticatedApiClient
   ) {
     this.setupStyles();
   }
@@ -448,7 +450,7 @@ export class FindAGravePage implements Page {
   private async lookupRecordId(memorial: Memorial): Promise<void> {
     try {
       console.log(`Looking up record ID for memorial ${memorial.memorialId}`, memorial);
-      const searchRecordsResponse = await this.fsApiClient.searchRecords(new URLSearchParams({
+      const searchRecordsResponse = await this.anonymousFsApiClient.searchRecords(new URLSearchParams({
         'q.externalRecordId': memorial.memorialId,
         'f.collectionId': FINDAGRAVE_COLLECTION_ID
       }));
@@ -472,7 +474,7 @@ export class FindAGravePage implements Page {
       if (!await this.dataStorage.getAuthenticatedSessionId()) return;
 
       console.log(`Looking up person ID for memorial ${memorial.memorialId}`, memorial);
-      const attachments = await this.fsApiClient.getAttachmentsForRecord(memorial.data.recordId!);
+      const attachments = await this.authenticatedFsApiClient.getAttachmentsForRecord(memorial.data.recordId!);
       if (attachments && attachments.length > 0 && attachments[0].persons?.length > 0) {
         const personId = attachments[0].persons[0].entityId;
         memorial.data.personId = personId;

@@ -1,15 +1,15 @@
+import { UnauthenticatedApiClient } from "../../fs-api/unauthenticated-api-client";
 import { SEARCH_ICON_HTML } from "../../icons";
-import { FsApiClient } from "../../fs-api/fs-api-client";
 import { Page } from "../../page";
 import { createFullTextSearchForm } from "../../util/familysearch-utils";
 import { buildSearchUrlForPerson, SearchDetailLevel } from "../../util/gedcomx-utils";
 
 export class FamilySearchRecordPage implements Page {
-  private readonly fsApiClient: FsApiClient;
+  private readonly fsApiClient: UnauthenticatedApiClient;
 
   private searchLinksGenerated = false;
 
-  constructor(fsApiClient: FsApiClient) {
+  constructor(fsApiClient: UnauthenticatedApiClient) {
     this.fsApiClient = fsApiClient;
   }
 

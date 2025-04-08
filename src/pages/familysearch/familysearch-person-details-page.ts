@@ -1,4 +1,4 @@
-import { FsApiClient } from "../../fs-api/fs-api-client";
+import { AuthenticatedApiClient } from "../../fs-api/authenticated-api-client";
 import { Page } from "../../page";
 import { buildSearchUrlForPerson, SearchDetailLevel } from "../../util/gedcomx-utils";
 
@@ -9,10 +9,10 @@ import { buildSearchUrlForPerson, SearchDetailLevel } from "../../util/gedcomx-u
 export class FamilySearchPersonDetailsPage implements Page {
   private static readonly SOURCES_GRID_LINK_ID = 'sources-grid-link';
   private static readonly TREE_SEARCH_LINK_ID = 'tree-search-link';
-  private readonly fsApiClient: FsApiClient;
+  private readonly fsApiClient: AuthenticatedApiClient;
   private readonly shouldInjectSourcesGridLink: boolean;
 
-  constructor(fsApiClient: FsApiClient) {
+  constructor(fsApiClient: AuthenticatedApiClient) {
     this.fsApiClient = fsApiClient;
     this.shouldInjectSourcesGridLink = localStorage.getItem('shouldInjectSourcesGridLink') === 'true';
   }

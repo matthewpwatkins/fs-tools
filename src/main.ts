@@ -1,4 +1,7 @@
-import { FsApiClient } from "./fs-api/fs-api-client";
+import { AnonymousApiClient } from "./fs-api/anonymous-api-client";
+import { AuthenticatedApiClient } from "./fs-api/authenticated-api-client";
+import { UnauthenticatedApiClient } from "./fs-api/unauthenticated-api-client";
+import { RequestExecutor } from "./fs-api/request-executor";
 import { Page } from "./page";
 import { v4 as uuidv4 } from 'uuid';
 // import { BillionGravesGravePage } from "./pages/billiongraves/billiongraves-grave-page";
@@ -12,17 +15,25 @@ import { ChromeExtensionDataStorage } from "./fs-api/chrome-extension-data-stora
 import { Toast } from "./ui/toast";
 
 async function main() {
+  // Create data storage
   const dataStorage = new ChromeExtensionDataStorage();
   
-  const fsApiClient = new FsApiClient(dataStorage);
+  // Create request executor
+  const requestExecutor = new RequestExecutor();
+  
+  // Create API clients with the shared request executor
+  const unauthenticatedClient = new UnauthenticatedApiClient(requestExecutor);
+  const anonymousClient = new AnonymousApiClient(dataStorage, requestExecutor);
+  const authenticatedClient = new AuthenticatedApiClient(dataStorage, requestExecutor);
+
   const ALL_PAGES: Page[] = [
     // new BillionGravesGravePage(),
     new FamilySearchPage(dataStorage),
     new FamilySearchFilmPage(),
-    new FamilySearchPersonDetailsPage(fsApiClient),
-    new FamilySearchRecordPage(fsApiClient),
+    new FamilySearchPersonDetailsPage(authenticatedClient),
+    new FamilySearchRecordPage(unauthenticatedClient),
     new FamilySearchSearchResultsPage(),  
-    new FindAGravePage(dataStorage, fsApiClient)
+    new FindAGravePage(dataStorage, anonymousClient, authenticatedClient)
   ];
   
   let currentURL: URL | undefined;
