@@ -18,13 +18,10 @@ async function main() {
   // Create data storage
   const dataStorage = new ChromeExtensionDataStorage();
   
-  // Create request executor
-  const requestExecutor = new RequestExecutor();
-  
-  // Create API clients with the shared request executor
-  const unauthenticatedClient = new UnauthenticatedApiClient(requestExecutor);
-  const anonymousClient = new AnonymousApiClient(dataStorage, requestExecutor);
-  const authenticatedClient = new AuthenticatedApiClient(dataStorage, requestExecutor);
+  // Create API clients
+  const unauthenticatedClient = new UnauthenticatedApiClient(new RequestExecutor());
+  const anonymousClient = new AnonymousApiClient(dataStorage, new RequestExecutor());
+  const authenticatedClient = new AuthenticatedApiClient(dataStorage, new RequestExecutor());
 
   const ALL_PAGES: Page[] = [
     // new BillionGravesGravePage(),
@@ -42,15 +39,15 @@ async function main() {
   let updateInProgress: string | undefined;
 
   // Get current chrome extension version
-  const newVersion = chrome.runtime.getManifest().version;
-  const oldVersion = await dataStorage.getLatestStrageVersionId();
-  if (oldVersion !== newVersion) {
-    if (!oldVersion || oldVersion < '1.0.16') {
-      console.log(`Data version upgrade detected: ${oldVersion} -> ${newVersion}. Clearing local storage`);
-      await dataStorage.clear();
-    }
-    dataStorage.setLatestStrageVersionId(newVersion);
-  }
+  // const newVersion = chrome.runtime.getManifest().version;
+  // const oldVersion = await dataStorage.getLatestStrageVersionId();
+  // if (oldVersion !== newVersion) {
+  //   if (!oldVersion || oldVersion < '1.0.16') {
+  //     console.log(`Data version upgrade detected: ${oldVersion} -> ${newVersion}. Clearing local storage`);
+  //     await dataStorage.clear();
+  //   }
+  //   dataStorage.setLatestStrageVersionId(newVersion);
+  // }
 
   async function onPageChange() {
     const updateId = uuidv4().split('-')[1];
