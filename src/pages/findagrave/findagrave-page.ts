@@ -261,7 +261,7 @@ export class FindAGravePage implements Page {
       let recordLink = btnGroup.querySelector<HTMLAnchorElement>(`.${FindAGravePage.CSS.RECORD_LINK}`);
       if (!recordLink) {
         recordLink = document.createElement('a');
-        recordLink.className = FindAGravePage.CSS.RECORD_LINK;
+        recordLink.classList.add(FindAGravePage.CSS.RECORD_LINK, FindAGravePage.CSS.STATUS.GRAY);
         recordLink.target = '_blank';
         recordLink.onclick = (e) => e.stopPropagation();
         recordLink.innerHTML = RECORD_ICON_HTML;
@@ -272,7 +272,7 @@ export class FindAGravePage implements Page {
       let personLink = btnGroup.querySelector<HTMLAnchorElement>(`.${FindAGravePage.CSS.PERSON_LINK}`);
       if (!personLink) {
         personLink = document.createElement('a');
-        personLink.className = FindAGravePage.CSS.PERSON_LINK;
+        personLink.classList.add(FindAGravePage.CSS.PERSON_LINK, FindAGravePage.CSS.STATUS.GRAY);
         personLink.target = '_blank';
         personLink.onclick = (e) => {
           e.stopPropagation();
@@ -288,7 +288,7 @@ export class FindAGravePage implements Page {
       let refreshLink = btnGroup.querySelector<HTMLAnchorElement>(`.${FindAGravePage.CSS.REFRESH_LINK}`);
       if (!refreshLink) {
         refreshLink = document.createElement('a');
-        refreshLink.className = FindAGravePage.CSS.REFRESH_LINK;
+        refreshLink.classList.add(FindAGravePage.CSS.REFRESH_LINK, FindAGravePage.CSS.STATUS.GRAY);
         refreshLink.href = '#';
         refreshLink.onclick = async (e) => {
           e.preventDefault();
@@ -306,7 +306,7 @@ export class FindAGravePage implements Page {
       }
 
       // Update links based on current state
-      this.updateLinkStates(memorial, { mainLink, recordLink, personLink });
+      this.updateLinkStates(memorial, { mainLink, recordLink, personLink, refreshLink });
     }
   }
 
@@ -316,23 +316,18 @@ export class FindAGravePage implements Page {
       mainLink: HTMLAnchorElement, 
       recordLink: HTMLAnchorElement, 
       personLink: HTMLAnchorElement,
+      refreshLink: HTMLAnchorElement
     }
   ): void {
-    const { mainLink, recordLink, personLink } = links;
+    const { mainLink, recordLink, personLink, refreshLink } = links;
 
-    // Clear all status classes first
+    // Record link state
     recordLink.classList.remove(
       FindAGravePage.CSS.STATUS.DEFAULT,
       FindAGravePage.CSS.STATUS.GRAY,
       FindAGravePage.CSS.STATUS.ORANGE
     );
-    personLink.classList.remove(
-      FindAGravePage.CSS.STATUS.DEFAULT,
-      FindAGravePage.CSS.STATUS.GRAY,
-      FindAGravePage.CSS.STATUS.ORANGE
-    );
 
-    // Record link state
     switch (memorial.data.recordIdStatus) {
       case IdStatus.UNKNOWN:
         recordLink.classList.add(FindAGravePage.CSS.STATUS.GRAY);
@@ -353,6 +348,12 @@ export class FindAGravePage implements Page {
     }
 
     // Person link state
+    personLink.classList.remove(
+      FindAGravePage.CSS.STATUS.DEFAULT,
+      FindAGravePage.CSS.STATUS.GRAY,
+      FindAGravePage.CSS.STATUS.ORANGE
+    );
+
     switch (memorial.data.personIdStatus) {
       case IdStatus.UNKNOWN:
         personLink.classList.add(FindAGravePage.CSS.STATUS.GRAY);
@@ -376,6 +377,16 @@ export class FindAGravePage implements Page {
         personLink.style.cursor = 'default';
         break;
     }
+
+    // Refresh link state
+    refreshLink.classList.remove(
+      FindAGravePage.CSS.STATUS.DEFAULT,
+      FindAGravePage.CSS.STATUS.GRAY,
+      FindAGravePage.CSS.STATUS.ORANGE
+    );
+
+    const isDefault = memorial.isProcessing || memorial.data.recordIdStatus !== IdStatus.UNKNOWN || memorial.data.personIdStatus !== IdStatus.UNKNOWN;
+    refreshLink.classList.add(isDefault ? FindAGravePage.CSS.STATUS.DEFAULT : FindAGravePage.CSS.STATUS.GRAY);
 
     // Main link state - points to person if available, otherwise record
     if (memorial.data.personIdStatus === IdStatus.FOUND) {
@@ -415,7 +426,8 @@ export class FindAGravePage implements Page {
       const refreshSpinner = el.querySelector<HTMLAnchorElement>(`.${FindAGravePage.CSS.REFRESH_LINK}`)?.querySelector(`.${FindAGravePage.CSS.SPIN_CONTAINER}`);
       if (refreshSpinner) {
         if (isProcessing) {
-          refreshSpinner.classList.add(FindAGravePage.CSS.SPIN);
+          refreshSpinner.classList.remove(FindAGravePage.CSS.STATUS.GRAY);
+          refreshSpinner.classList.add(FindAGravePage.CSS.SPIN, FindAGravePage.CSS.STATUS.DEFAULT);
         } else {
           refreshSpinner.classList.remove(FindAGravePage.CSS.SPIN);
         }
