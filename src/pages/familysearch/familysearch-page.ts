@@ -52,13 +52,11 @@ export class FamilySearchPage implements Page {
   private injectFullTextSearchMenuItem(): void {
     let fullTextSearchLi = document.getElementById(FamilySearchPage.FULL_TEXT_SEARCH_MENU_ITEM_ID);
     if (fullTextSearchLi) {
-      console.log('Full-Text Search menu item already exists, skipping injection.');
       return;
     }
   
     const headerNav = document.querySelector('header nav');
     if (!headerNav) {
-      console.log('Header nav not found, skipping injection.');
       return;
     }
   
@@ -67,7 +65,6 @@ export class FamilySearchPage implements Page {
     });
     
     if (!recordsLi) {
-      console.log('Records menu item not found, skipping injection.');
       return;
     }
   
