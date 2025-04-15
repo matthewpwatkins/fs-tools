@@ -7,6 +7,8 @@ import { getFamilySearchSessionIdFromCookie } from "../../util/cookie-utils";
  * Adds a menu command to copy the session ID.
  */
 export class FamilySearchPage implements Page {
+  private static readonly FULL_TEXT_SEARCH_MENU_ITEM_ID = 'full-text-search-menu-item';
+
   private readonly dataStorage: DataStorage;
   private authenticatedSessionId?: string;
 
@@ -27,7 +29,6 @@ export class FamilySearchPage implements Page {
   }
 
   async onPageEnter(): Promise<void> {
-    
     await this.updateSessionId();
   }
 
@@ -36,7 +37,8 @@ export class FamilySearchPage implements Page {
   }
 
   async onPageContentUpdate(updateID: string): Promise<void> {
-    this.updateSessionId();
+    this.injectFullTextSearchMenuItem();
+    await this.updateSessionId();
   }
 
   private async updateSessionId(): Promise<void> {
@@ -45,5 +47,42 @@ export class FamilySearchPage implements Page {
       this.authenticatedSessionId = currentSessionId;
       await this.dataStorage.setAuthenticatedSessionId(this.authenticatedSessionId);
     }
+  }
+
+  private injectFullTextSearchMenuItem(): void {
+    let fullTextSearchLi = document.getElementById(FamilySearchPage.FULL_TEXT_SEARCH_MENU_ITEM_ID);
+    if (fullTextSearchLi) {
+      console.log('Full-Text Search menu item already exists, skipping injection.');
+      return;
+    }
+  
+    const headerNav = document.querySelector('header nav');
+    if (!headerNav) {
+      console.log('Header nav not found, skipping injection.');
+      return;
+    }
+  
+    const recordsLi = Array.from(headerNav.querySelectorAll('li')).find(li => {
+      return li.querySelector('a')?.innerText?.trim() === 'Records';
+    });
+    
+    if (!recordsLi) {
+      console.log('Records menu item not found, skipping injection.');
+      return;
+    }
+  
+    // Clone that li element with the text of full-text search
+    fullTextSearchLi = recordsLi.cloneNode(true) as HTMLLIElement;
+    fullTextSearchLi.id = FamilySearchPage.FULL_TEXT_SEARCH_MENU_ITEM_ID;
+    
+    // Update the link text and URL
+    const fullTextSearchLink = fullTextSearchLi.querySelector('a')!;
+    fullTextSearchLink.setAttribute('href', '/en/search/full-text');
+
+    const textSpan = [...fullTextSearchLink.querySelectorAll('span')].find(span => span.firstChild?.nodeType === Node.TEXT_NODE && span.innerText.trim() === 'Records')!;
+    textSpan.innerText = 'Full-Text';
+    
+    // Place the new li right after the original li
+    recordsLi.insertAdjacentElement('afterend', fullTextSearchLi);
   }
 }
