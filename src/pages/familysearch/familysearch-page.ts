@@ -38,6 +38,7 @@ export class FamilySearchPage implements Page {
 
   async onPageContentUpdate(updateID: string): Promise<void> {
     this.injectFullTextSearchMenuItem();
+    this.addFullTextViewParameterToFilmLinks();
     await this.updateSessionId();
   }
 
@@ -81,5 +82,15 @@ export class FamilySearchPage implements Page {
     
     // Place the new li right after the original li
     recordsLi.insertAdjacentElement('afterend', fullTextSearchLi);
+  }
+
+  private addFullTextViewParameterToFilmLinks() : void {
+    for (const link of document.querySelectorAll<HTMLAnchorElement>('a[href*="/ark:/61903/3:1:"]')) {
+      const url = new URL(link.href);
+      if (!url.searchParams.has('view')) {
+        url.searchParams.set('view', 'fullText');
+        link.href = url.toString();
+      }
+    }
   }
 }
