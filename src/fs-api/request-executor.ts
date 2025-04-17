@@ -19,6 +19,8 @@ export interface ApiResponse<T> {
 }
 
 export class RequestExecutor {
+  private static readonly REQUEST_TIMEOUT_MS = 10_000;
+
   public static readonly CLIENT_ID = 'a02f100000TnN56AAF';
   public static readonly IP_ADDRESS = '216.49.186.122';
 
@@ -68,7 +70,10 @@ export class RequestExecutor {
     }
 
     const urlString = url.toString();
-    const response = await fetch(urlString, requestInit);
+    const response = await fetch(urlString,{
+      ...requestInit,
+      signal: AbortSignal.timeout(RequestExecutor.REQUEST_TIMEOUT_MS)
+    });
     
     // Create the response object
     const apiResponse: ApiResponse<T> = {
