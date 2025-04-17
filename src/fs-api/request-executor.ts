@@ -4,7 +4,6 @@ export interface RequestProps {
   headers?: Record<string, string>;
   body?: string | URLSearchParams | object;
   queryStringParams?: URLSearchParams;
-  authHeader?: string;
 }
 
 export interface ApiResponse<T> {
@@ -29,10 +28,6 @@ export class RequestExecutor {
       'Accept': 'application/json, text/plain, */*',
       ...props.headers
     };
-
-    if (props.authHeader) {
-      baseHeaders['Authorization'] = props.authHeader;
-    }
 
     const url = new URL(props.path, props.baseUrl);
     if (props.queryStringParams) {

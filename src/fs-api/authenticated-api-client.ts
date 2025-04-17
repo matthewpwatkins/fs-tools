@@ -1,5 +1,5 @@
 import { DataStorage } from "./data-storage";
-import { RequestExecutor } from "./request-executor";
+import { RequestExecutor, RequestProps } from "./request-executor";
 import { GedcomX } from "./models/gedcomx";
 import { SourceAttachment } from "./models/source-attachment";
 import { API_BASE_URL, WEB_BASE_URL, GEDCOMX_JSON_TYPE } from "./constants";
@@ -44,18 +44,16 @@ export class AuthenticatedApiClient {
     return sessionId;
   }
   
-  private async executeAuthenticatedRequest<T>(requestParams: {
-    baseUrl: string;
-    path: string;
-    headers?: Record<string, string>;
-    queryStringParams?: URLSearchParams;
-  }): Promise<T> {
+  private async executeAuthenticatedRequest<T>(requestParams: RequestProps): Promise<T> {
     const sessionId = await this.getAuthenticatedSessionId();
     
     try {
       const response = await this.requestExecutor.executeRequest<T>({
         ...requestParams,
-        authHeader: `Bearer ${sessionId}`
+        headers: {
+          ...requestParams.headers || {}, 
+          'Authorization': `Bearer ${sessionId}`,
+        }
       });
       
       response.throwIfNotOk();
