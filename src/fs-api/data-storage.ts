@@ -1,5 +1,10 @@
 import { FindAGraveMemorialData } from "../models/findagrave-memorial-data";
 
+export interface IpAddressData {
+  ipAddress: string;
+  createdAt: number; // timestamp when this IP address data was created
+}
+
 export interface DataStorage {
   getLatestStrageVersionId(): Promise<string | undefined>;
   setLatestStrageVersionId(versionId: string): Promise<void>;
@@ -18,4 +23,8 @@ export interface DataStorage {
   // Memorial data (record and person IDs)
   getFindAGraveMemorialData(memorialId: string): Promise<FindAGraveMemorialData | undefined>;
   setFindAGraveMemorialData(memorialId: string, data: FindAGraveMemorialData | undefined): Promise<void>;
+  
+  // IP Address
+  getIpAddressData(): Promise<IpAddressData | undefined>;
+  setIpAddressData(data: IpAddressData): Promise<void>;
 }

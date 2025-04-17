@@ -9,6 +9,8 @@ export class AnonymousApiClient {
   private static readonly RETRY_ERROR_STATUSES = new Set<number>([401, 403, 429]);
   private static readonly ANONYMOUS_REFRESH_THRESHOLD = 100;
   private static readonly THROTTLE_TIME_MS = 200;
+  private static readonly DEFAULT_IP_ADDRESS = '216.49.186.122';
+  private static readonly CLIENT_ID = 'a02f100000TnN56AAF';
 
   private requestExecutor: RequestExecutor;
   private dataStorage: DataStorage;
@@ -21,13 +23,14 @@ export class AnonymousApiClient {
 
   public async fetchNewAnonymousSessionId(): Promise<void> {
     console.log('Getting a new anonymous session ID from FamilySearch');
+    const ipAddress = (await this.dataStorage.getIpAddressData())?.ipAddress || AnonymousApiClient.DEFAULT_IP_ADDRESS;
     const response = await this.requestExecutor.executeRequest<TokenResponse>({
       baseUrl: WEB_BASE_URL,
       path: '/service/ident/cis/cis-web/oauth2/v3/token',
       body: new URLSearchParams({
         'grant_type': 'unauthenticated_session',
-        'ip_address': RequestExecutor.IP_ADDRESS,
-        'client_id': RequestExecutor.CLIENT_ID
+        'ip_address': ipAddress,
+        'client_id': AnonymousApiClient.CLIENT_ID
       })
     });
 

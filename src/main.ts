@@ -12,6 +12,7 @@ import { FamilySearchSearchResultsPage } from "./pages/familysearch/familysearch
 import { FindAGravePage } from "./pages/findagrave/findagrave-page";
 import { ChromeExtensionDataStorage } from "./fs-api/chrome-extension-data-storage";
 import { Toast } from "./ui/toast";
+import { IpAddressManager } from "./fs-api/ip-address-manager";
 
 async function main() {
   // Create data storage
@@ -20,6 +21,9 @@ async function main() {
   // Create API clients
   const anonymousClient = new AnonymousApiClient(dataStorage, new RequestExecutor());
   const authenticatedClient = new AuthenticatedApiClient(dataStorage, new RequestExecutor());
+
+  // Handle IP address data
+  await IpAddressManager.checkAndUpdateIpAddress(dataStorage);
 
   const ALL_PAGES: Page[] = [
     // new BillionGravesGravePage(),
@@ -115,7 +119,6 @@ async function main() {
       await onPageChange();
     }
   }
-  
 
   new MutationObserver(onPageChange).observe(document, {
     childList: true,

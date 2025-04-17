@@ -20,9 +20,6 @@ export interface ApiResponse<T> {
 export class RequestExecutor {
   private static readonly REQUEST_TIMEOUT_MS = 10_000;
 
-  public static readonly CLIENT_ID = 'a02f100000TnN56AAF';
-  public static readonly IP_ADDRESS = '216.49.186.122';
-
   public async executeRequest<T>(props: RequestProps): Promise<ApiResponse<T>> {    
     const baseHeaders: Record<string, string> = {
       'Accept': 'application/json, text/plain, */*',

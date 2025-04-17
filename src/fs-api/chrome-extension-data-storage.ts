@@ -1,4 +1,4 @@
-import { DataStorage } from "./data-storage";
+import { DataStorage, IpAddressData } from "./data-storage";
 import { FindAGraveMemorialData } from "../models/findagrave-memorial-data";
 
 // Define constants for magic strings
@@ -7,6 +7,7 @@ const ANONYMOUS_SESSION_ID_KEY = 'anonymous-fs-session-id';
 const AUTHENTICATED_SESSION_ID_KEY = 'authenticated-fs-session-id';
 const ALL_SESSION_ID_KEYS = [ANONYMOUS_SESSION_ID_KEY, AUTHENTICATED_SESSION_ID_KEY];
 const FIND_A_GRAVE_MEMORIAL_PREFIX = 'find-a-grave-memorial.';
+const IP_ADDRESS_DATA_KEY = 'ip-address-data';
 
 type DataCallback<T> = (value?: T) => Promise<void>;
 
@@ -53,7 +54,7 @@ export class ChromeExtensionDataStorage implements DataStorage {
   }
 
   public async setAnonymousSessionId(sessionId?: string): Promise<void> {
-    await this.set<string>(ANONYMOUS_SESSION_ID_KEY, sessionId);
+    await this.set(ANONYMOUS_SESSION_ID_KEY, sessionId);
     this.sessionIdCache.set(ANONYMOUS_SESSION_ID_KEY, sessionId);
   }
 
@@ -72,7 +73,7 @@ export class ChromeExtensionDataStorage implements DataStorage {
   }
 
   public async setAuthenticatedSessionId(sessionId?: string): Promise<void> {
-    await this.set<string>(AUTHENTICATED_SESSION_ID_KEY, sessionId);
+    await this.set(AUTHENTICATED_SESSION_ID_KEY, sessionId);
     this.sessionIdCache.set(AUTHENTICATED_SESSION_ID_KEY, sessionId);
   }
 
@@ -95,13 +96,23 @@ export class ChromeExtensionDataStorage implements DataStorage {
     }
   }
 
+  // IP Address data
+  public async getIpAddressData(): Promise<IpAddressData | undefined> {
+    const value = await this.get(IP_ADDRESS_DATA_KEY);
+    return value ? JSON.parse(value) : undefined;
+  }
+
+  public async setIpAddressData(data: IpAddressData): Promise<void> {
+    await this.set(IP_ADDRESS_DATA_KEY, JSON.stringify(data));
+  }
+
   // #region Private helpers
 
   private async get(key: string): Promise<string | undefined> {
     return (await chrome.storage.local.get(key))[key];
   }
 
-  private async set<T>(key: string, value: string | undefined): Promise<void> {
+  private async set(key: string, value: string | undefined): Promise<void> {
     if (value === null || value === undefined) {
       await chrome.storage.local.remove(key);
     } else {
