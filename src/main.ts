@@ -1,6 +1,5 @@
 import { AnonymousApiClient } from "./fs-api/anonymous-api-client";
 import { AuthenticatedApiClient } from "./fs-api/authenticated-api-client";
-import { UnauthenticatedApiClient } from "./fs-api/unauthenticated-api-client";
 import { RequestExecutor } from "./fs-api/request-executor";
 import { Page } from "./page";
 import { v4 as uuidv4 } from 'uuid';
@@ -19,7 +18,6 @@ async function main() {
   const dataStorage = new ChromeExtensionDataStorage();
   
   // Create API clients
-  const unauthenticatedClient = new UnauthenticatedApiClient(new RequestExecutor());
   const anonymousClient = new AnonymousApiClient(dataStorage, new RequestExecutor());
   const authenticatedClient = new AuthenticatedApiClient(dataStorage, new RequestExecutor());
 
@@ -28,7 +26,7 @@ async function main() {
     new FamilySearchPage(dataStorage),
     new FamilySearchFilmPage(),
     new FamilySearchPersonDetailsPage(authenticatedClient),
-    new FamilySearchRecordPage(unauthenticatedClient),
+    new FamilySearchRecordPage(anonymousClient),
     new FamilySearchSearchResultsPage(),  
     new FindAGravePage(dataStorage, anonymousClient, authenticatedClient)
   ];

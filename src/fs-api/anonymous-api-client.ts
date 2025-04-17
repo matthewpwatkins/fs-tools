@@ -2,7 +2,8 @@ import { DataStorage } from "./data-storage";
 import { RequestExecutor, RequestProps } from "./request-executor";
 import { TokenResponse } from "./models/token-response";
 import { SearchRecordsResponse } from "./models/search-records-response";
-import { WEB_BASE_URL } from "./constants";
+import { GEDCOMX_JSON_TYPE, WEB_BASE_URL } from "./constants";
+import { GedcomX } from "./models/gedcomx";
 
 export class AnonymousApiClient {
   private static readonly RETRY_ERROR_STATUSES = new Set<number>([401, 403, 429]);
@@ -32,6 +33,17 @@ export class AnonymousApiClient {
 
     response.throwIfNotOk();
     await this.dataStorage.setAnonymousSessionId(response.data!.access_token);
+  }
+
+  public async getArk(ark: string): Promise<GedcomX> {
+    return await this.executeRequest<GedcomX>({
+      baseUrl: WEB_BASE_URL,
+      path: `/${ark}`,
+      queryStringParams: new URLSearchParams({ 'useSLS': 'true' }),
+      headers: {
+        'Accept': GEDCOMX_JSON_TYPE,
+      },
+    });
   }
 
   public async searchRecords(searchParams: URLSearchParams): Promise<SearchRecordsResponse> {
