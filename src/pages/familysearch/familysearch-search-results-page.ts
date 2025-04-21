@@ -13,7 +13,7 @@ export class FamilySearchSearchResultsPage implements Page {
       && url.searchParams.get('click-first-result') === 'true';
   }
 
-  requiresAuthenticatedSessionId(): boolean {
+  requiresAuthenticatedSession(): boolean {
     return false;
   }
   

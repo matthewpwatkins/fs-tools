@@ -64,7 +64,7 @@ export class FindAGravePage implements Page {
     return url.hostname.toLowerCase().endsWith('findagrave.com');
   }
 
-  public requiresAuthenticatedSessionId(): boolean {
+  public requiresAuthenticatedSession(): boolean {
     return true;
   }
 
@@ -493,7 +493,7 @@ export class FindAGravePage implements Page {
 
   private async lookupPersonId(memorial: Memorial): Promise<void> {
     try {
-      if (!await this.dataStorage.getAuthenticatedSessionId()) return;
+      if (!await this.dataStorage.getAuthenticatedSession()) return;
 
       console.log(`Looking up person ID for memorial ${memorial.memorialId}`, memorial);
       const attachments = await this.authenticatedFsApiClient.getAttachmentsForRecord(memorial.data.recordId!);

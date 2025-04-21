@@ -14,7 +14,7 @@ export class FamilySearchFilmPage implements Page {
       && url.pathname.indexOf('/search/film/') >= 0;
   }
 
-  requiresAuthenticatedSessionId(): boolean {
+  requiresAuthenticatedSession(): boolean {
     return false;
   }
   

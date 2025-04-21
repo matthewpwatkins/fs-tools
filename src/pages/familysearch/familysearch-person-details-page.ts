@@ -22,7 +22,7 @@ export class FamilySearchPersonDetailsPage implements Page {
       && url.pathname.indexOf('/tree/person/') >= 0;
   }
 
-  requiresAuthenticatedSessionId(): boolean {
+  requiresAuthenticatedSession(): boolean {
     return false;
   }
   

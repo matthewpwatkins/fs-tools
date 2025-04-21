@@ -1,4 +1,4 @@
-import { DataStorage } from "./data-storage";
+import { DataStorage, Session } from "./data-storage";
 import { RequestExecutor, RequestProps } from "./request-executor";
 import { GedcomX } from "./models/gedcomx";
 import { SourceAttachment } from "./models/source-attachment";
@@ -36,23 +36,23 @@ export class AuthenticatedApiClient {
     });
   }
   
-  private async getAuthenticatedSessionId(): Promise<string> {
-    const sessionId = await this.dataStorage.getAuthenticatedSessionId();
-    if (!sessionId) {
-      throw new Error('An authenticated session ID is required but not available');
+  private async getAuthenticatedSession(): Promise<Session> {
+    const session = await this.dataStorage.getAuthenticatedSession();
+    if (!session) {
+      throw new Error('An authenticated session is required but not available');
     }
-    return sessionId;
+    return session;
   }
   
   private async executeAuthenticatedRequest<T>(requestParams: RequestProps): Promise<T> {
-    const sessionId = await this.getAuthenticatedSessionId();
+    const session = await this.getAuthenticatedSession();
     
     try {
       const response = await this.requestExecutor.executeRequest<T>({
         ...requestParams,
         headers: {
           ...requestParams.headers || {}, 
-          'Authorization': `Bearer ${sessionId}`,
+          'Authorization': `Bearer ${session.sessionId}`,
         }
       });
       
@@ -61,8 +61,8 @@ export class AuthenticatedApiClient {
     } catch (error) {
       // Clear session ID if authentication failed
       if (error instanceof Error && (error.message.includes('status 401') || error.message.includes('status 403'))) {
-        console.warn('Authenticated session ID expired. Clearing it.');
-        await this.dataStorage.setAuthenticatedSessionId(undefined);
+        console.warn('Authenticated session expired. Clearing it.');
+        await this.dataStorage.setAuthenticatedSession(undefined);
       }
       throw error;
     }

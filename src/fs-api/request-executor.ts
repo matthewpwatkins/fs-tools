@@ -8,10 +8,11 @@ export interface RequestProps {
 
 export interface ApiResponse<T> {
   data?: T;
+  exception?: Error;
   errorBody?: any;
-  status: number;
-  statusText: string;
-  headers: Headers;
+  status?: number;
+  statusText?: string;
+  headers?: Headers;
   url: string;
   ok: boolean;
   throwIfNotOk(): void;
@@ -62,38 +63,59 @@ export class RequestExecutor {
     }
 
     const urlString = url.toString();
-    const response = await fetch(urlString,{
-      ...requestInit,
-      signal: AbortSignal.timeout(RequestExecutor.REQUEST_TIMEOUT_MS)
-    });
-    
-    // Create the response object
     const apiResponse: ApiResponse<T> = {
-      status: response.status,
-      statusText: response.statusText,
-      headers: response.headers,
-      url: response.url,
-      ok: response.ok,
+      ok: false,
+      url: urlString,
       throwIfNotOk: () => {
-        if (!response.ok) {
-          throw new Error(`${requestInit.method} request to ${url} failed with status ${response.status}`);
+        if (!apiResponse.ok) {
+          if (apiResponse.exception) {
+            throw apiResponse.exception;
+          }
+          throw new Error(`${requestInit.method} request to ${url} failed with status ${apiResponse.status}`);
         }
-      }
+      },
     };
+    
+    try {
+      const fetchResponse = await fetch(urlString,{
+        ...requestInit,
+        signal: AbortSignal.timeout(RequestExecutor.REQUEST_TIMEOUT_MS)
+      });
+      await this.populateApiResponseFieldsFromFetchResponse<T>(apiResponse, fetchResponse);
+    } catch (err: any) {
+      this.populateApiResponseFieldsFromError<T>(apiResponse, err);
+    }
 
-    // Set the response data or error body
-    if (response.ok) {
-      apiResponse.data = await response.json() as T;
+    return apiResponse;
+  }
+
+  private async populateApiResponseFieldsFromFetchResponse<T>(apiResponse: ApiResponse<T>, fetchResponse: Response) {
+    apiResponse.ok = fetchResponse.ok;
+    apiResponse.status = fetchResponse.status;
+    apiResponse.statusText = fetchResponse.statusText;
+    apiResponse.headers = fetchResponse.headers;
+
+    if (fetchResponse.ok) {
+      apiResponse.data = await fetchResponse.json() as T;
     } else {
       try {
-        apiResponse.errorBody = await response.json();
+        apiResponse.errorBody = await fetchResponse.json();
       } catch (err) {
         try {
-          apiResponse.errorBody = await response.text();
+          apiResponse.errorBody = await fetchResponse.text();
         } catch (err) { }
       }
     }
-    
-    return apiResponse;
+  }
+
+  private populateApiResponseFieldsFromError<T>(apiResponse: ApiResponse<T>, err: any) {
+    apiResponse.ok = false;
+    if (err instanceof Error) {
+      apiResponse.exception = err;
+    } else if (typeof err === 'string') {
+      apiResponse.exception = new Error(err);
+    } else {
+      apiResponse.exception = new Error("An error occurred: " + err);
+    }
   }
 }

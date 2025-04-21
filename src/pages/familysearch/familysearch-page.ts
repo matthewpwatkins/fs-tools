@@ -20,7 +20,7 @@ export class FamilySearchPage implements Page {
     return url.hostname.toLowerCase().endsWith('familysearch.org');
   }
 
-  requiresAuthenticatedSessionId(): boolean {
+  requiresAuthenticatedSession(): boolean {
     return false;
   }
   
@@ -29,7 +29,7 @@ export class FamilySearchPage implements Page {
   }
 
   async onPageEnter(): Promise<void> {
-    await this.updateSessionId();
+    await this.updateAuthenticaledSession();
   }
 
   async onPageExit(): Promise<void> {
@@ -39,14 +39,17 @@ export class FamilySearchPage implements Page {
   async onPageContentUpdate(updateID: string): Promise<void> {
     this.injectFullTextSearchMenuItem();
     this.addFullTextViewParameterToFilmLinks();
-    await this.updateSessionId();
+    await this.updateAuthenticaledSession();
   }
 
-  private async updateSessionId(): Promise<void> {
+  private async updateAuthenticaledSession(): Promise<void> {
     const currentSessionId = getFamilySearchSessionIdFromCookie();
     if (currentSessionId !== this.authenticatedSessionId) {
       this.authenticatedSessionId = currentSessionId;
-      await this.dataStorage.setAuthenticatedSessionId(this.authenticatedSessionId);
+      await this.dataStorage.setAuthenticatedSession({
+        sessionId: this.authenticatedSessionId!,
+        createdAt: Date.now()
+      });
     }
   }
 

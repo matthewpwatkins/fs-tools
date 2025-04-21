@@ -13,6 +13,7 @@ import { FindAGravePage } from "./pages/findagrave/findagrave-page";
 import { ChromeExtensionDataStorage } from "./fs-api/chrome-extension-data-storage";
 import { Toast } from "./ui/toast";
 import { IpAddressManager } from "./fs-api/ip-address-manager";
+import { Session } from "./fs-api/data-storage";
 
 async function main() {
   // Create data storage
@@ -41,15 +42,15 @@ async function main() {
   let updateInProgress: string | undefined;
 
   // Get current chrome extension version
-  // const newVersion = chrome.runtime.getManifest().version;
-  // const oldVersion = await dataStorage.getLatestStrageVersionId();
-  // if (oldVersion !== newVersion) {
-  //   if (!oldVersion || oldVersion < '1.0.16') {
-  //     console.log(`Data version upgrade detected: ${oldVersion} -> ${newVersion}. Clearing local storage`);
-  //     await dataStorage.clear();
-  //   }
-  //   dataStorage.setLatestStrageVersionId(newVersion);
-  // }
+  const newVersion = chrome.runtime.getManifest().version;
+  const oldVersion = await dataStorage.getLatestStrageVersionId();
+  if (oldVersion !== newVersion) {
+    if (!oldVersion || oldVersion < '1.0.30') {
+      console.log(`Data version upgrade detected: ${oldVersion} -> ${newVersion}. Clearing local storage`);
+      await dataStorage.clear();
+    }
+    dataStorage.setLatestStrageVersionId(newVersion);
+  }
 
   async function onPageChange() {
     const updateId = uuidv4().split('-')[1];
@@ -101,11 +102,11 @@ async function main() {
     }
   }
 
-  async function onAuthenticatedSessionIdChange(newSessionId: string | undefined): Promise<void> {
+  async function onAuthenticatedSessionChange(updatedSession: Session | undefined): Promise<void> {
     const matchingPagesArray = [...matchingPages];
-    const anyPagesToastable = matchingPagesArray.some(page => page.requiresAuthenticatedSessionId());
+    const anyPagesToastable = matchingPagesArray.some(page => page.requiresAuthenticatedSession());
     if (anyPagesToastable) {
-      if (newSessionId) {
+      if (updatedSession) {
         Toast.hide();
       } else {
         Toast.show({
@@ -124,10 +125,10 @@ async function main() {
     childList: true,
     subtree: true,
   });
-  dataStorage.subsribeToAuthenticatedSessionIdChanges('main', onAuthenticatedSessionIdChange);
+  dataStorage.subsribeToAuthenticatedSessionChanges('main', onAuthenticatedSessionChange);
   
   await onPageChange();
-  await onAuthenticatedSessionIdChange(await dataStorage.getAuthenticatedSessionId());
+  await onAuthenticatedSessionChange(await dataStorage.getAuthenticatedSession());
 }
 
 main();

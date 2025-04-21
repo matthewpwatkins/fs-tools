@@ -14,7 +14,7 @@ export class BillionGravesGravePage implements Page {
       && url.pathname.startsWith('/grave/');
   }
 
-  requiresAuthenticatedSessionId(): boolean {
+  requiresAuthenticatedSession(): boolean {
     return false;
   }
 

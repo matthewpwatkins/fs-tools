@@ -18,7 +18,7 @@ export class FamilySearchRecordPage implements Page {
       && url.pathname.indexOf('/ark:/61903/1:1') >= 0;
   }
 
-  requiresAuthenticatedSessionId(): boolean {
+  requiresAuthenticatedSession(): boolean {
     return false;
   }
   

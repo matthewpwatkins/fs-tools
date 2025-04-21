@@ -1,10 +1,10 @@
-import { DataStorage, IpAddressData } from "./data-storage";
+import { DataStorage, IpAddressData, Session } from "./data-storage";
 import { FindAGraveMemorialData } from "../models/findagrave-memorial-data";
 
 // Define constants for magic strings
 const LATEST_STORAGE_VERSION_ID_KEY = 'latest-storage-version-id';
-const ANONYMOUS_SESSION_ID_KEY = 'anonymous-fs-session-id';
-const AUTHENTICATED_SESSION_ID_KEY = 'authenticated-fs-session-id';
+const ANONYMOUS_SESSION_ID_KEY = 'anonymous-fs-session';
+const AUTHENTICATED_SESSION_ID_KEY = 'authenticated-fs-session';
 const ALL_SESSION_ID_KEYS = [ANONYMOUS_SESSION_ID_KEY, AUTHENTICATED_SESSION_ID_KEY];
 const FIND_A_GRAVE_MEMORIAL_PREFIX = 'find-a-grave-memorial.';
 const IP_ADDRESS_DATA_KEY = 'ip-address-data';
@@ -12,17 +12,17 @@ const IP_ADDRESS_DATA_KEY = 'ip-address-data';
 type DataCallback<T> = (value?: T) => Promise<void>;
 
 export class ChromeExtensionDataStorage implements DataStorage {
-  private sessionIdCache: Map<string, string | undefined> = new Map();
-  private sessionIdCallbacks: Map<string, Map<string, DataCallback<any>>> = new Map();
+  private sessionCache: Map<string, Session | undefined> = new Map();
+  private sessionCallbacks: Map<string, Map<string, DataCallback<Session>>> = new Map();
 
   constructor() {
     chrome.storage.local.onChanged.addListener((changes) => {
       for (const key of ALL_SESSION_ID_KEYS) {
         if (changes[key]) {
-          const { newValue } = changes[key];
-          this.sessionIdCache.set(key, newValue);
-          this.sessionIdCallbacks.get(key)?.forEach(callback => {
-            callback(newValue);
+          const updatedSession = changes[key]?.newValue ? JSON.parse(changes[key].newValue) as Session : undefined;
+          this.sessionCache.set(key, updatedSession);
+          this.sessionCallbacks.get(key)?.forEach(callback => {
+            callback(updatedSession);
           });
         }
       }
@@ -30,101 +30,103 @@ export class ChromeExtensionDataStorage implements DataStorage {
   }
 
   public async getLatestStrageVersionId(): Promise<string | undefined> {
-    return (await chrome.storage.local.get(LATEST_STORAGE_VERSION_ID_KEY))[LATEST_STORAGE_VERSION_ID_KEY];
+    return await this.getString(LATEST_STORAGE_VERSION_ID_KEY);
   }
 
   public async setLatestStrageVersionId(versionId: string): Promise<void> {
-    await chrome.storage.local.set({ LATEST_STORAGE_VERSION_ID_KEY: versionId });
+    await this.setString(LATEST_STORAGE_VERSION_ID_KEY, versionId);
   }
 
   public async clear(): Promise<void> {
     await chrome.storage.local.clear();
-    this.sessionIdCache.clear();
-    this.sessionIdCallbacks.clear();
+    this.sessionCache.clear();
+    this.sessionCallbacks.clear();
   }
 
   // Anonymous session ID
-  public async getAnonymousSessionId(): Promise<string | undefined> {
-    if (this.sessionIdCache.has(ANONYMOUS_SESSION_ID_KEY)) {
-      return this.sessionIdCache.get(ANONYMOUS_SESSION_ID_KEY);
+  public async getAnonymousSession(): Promise<Session | undefined> {
+    if (this.sessionCache.has(ANONYMOUS_SESSION_ID_KEY)) {
+      return this.sessionCache.get(ANONYMOUS_SESSION_ID_KEY);
     }
-    const sessionId = await this.get(ANONYMOUS_SESSION_ID_KEY);
-    this.sessionIdCache.set(ANONYMOUS_SESSION_ID_KEY, sessionId);
-    return sessionId;
+    const session = await this.getObject<Session>(ANONYMOUS_SESSION_ID_KEY);
+    this.sessionCache.set(ANONYMOUS_SESSION_ID_KEY, session);
+    return session;
   }
 
-  public async setAnonymousSessionId(sessionId?: string): Promise<void> {
-    await this.set(ANONYMOUS_SESSION_ID_KEY, sessionId);
-    this.sessionIdCache.set(ANONYMOUS_SESSION_ID_KEY, sessionId);
+  public async setAnonymousSession(session?: Session): Promise<void> {
+    await this.setObject(ANONYMOUS_SESSION_ID_KEY, session);
+    this.sessionCache.set(ANONYMOUS_SESSION_ID_KEY, session);
   }
 
-  public subsribeToAnonymousSessionIdChanges(subscriptionId: string, callback: DataCallback<string>): void {
-    this.subscribe<string>(ANONYMOUS_SESSION_ID_KEY, subscriptionId, callback);
+  public subsribeToAnonymousSessionChanges(subscriptionId: string, callback: (session?: Session) => Promise<void>): void {
+    this.subscribeToSessionChange(ANONYMOUS_SESSION_ID_KEY, subscriptionId, callback);
   }
 
   // Authenticated session ID
-  public async getAuthenticatedSessionId(): Promise<string | undefined> {
-    if (this.sessionIdCache.has(AUTHENTICATED_SESSION_ID_KEY)) {
-      return this.sessionIdCache.get(AUTHENTICATED_SESSION_ID_KEY);
+  public async getAuthenticatedSession(): Promise<Session | undefined> {
+    if (this.sessionCache.has(AUTHENTICATED_SESSION_ID_KEY)) {
+      return this.sessionCache.get(AUTHENTICATED_SESSION_ID_KEY);
     }
-    const sessionId = await this.get(AUTHENTICATED_SESSION_ID_KEY);
-    this.sessionIdCache.set(AUTHENTICATED_SESSION_ID_KEY, sessionId);
-    return sessionId;
+    const session = await this.getObject<Session>(AUTHENTICATED_SESSION_ID_KEY);
+    this.sessionCache.set(AUTHENTICATED_SESSION_ID_KEY, session);
+    return session;
   }
 
-  public async setAuthenticatedSessionId(sessionId?: string): Promise<void> {
-    await this.set(AUTHENTICATED_SESSION_ID_KEY, sessionId);
-    this.sessionIdCache.set(AUTHENTICATED_SESSION_ID_KEY, sessionId);
+  public async setAuthenticatedSession(session?: Session): Promise<void> {
+    await this.setObject(AUTHENTICATED_SESSION_ID_KEY, session);
+    this.sessionCache.set(AUTHENTICATED_SESSION_ID_KEY, session);
   }
 
-  public subsribeToAuthenticatedSessionIdChanges(subscriptionId: string, callback: DataCallback<string>): void {
-    this.subscribe<string>(AUTHENTICATED_SESSION_ID_KEY, subscriptionId, callback);
+  public subsribeToAuthenticatedSessionChanges(subscriptionId: string, callback: (session?: Session) => Promise<void>): void {
+    this.subscribeToSessionChange(AUTHENTICATED_SESSION_ID_KEY, subscriptionId, callback);
   }
 
   // FindAGrave Memorial data
   public async getFindAGraveMemorialData(memorialId: string): Promise<FindAGraveMemorialData | undefined> {
-    const storageRecord = await chrome.storage.local.get(`${FIND_A_GRAVE_MEMORIAL_PREFIX}${memorialId}`);
-    const value = storageRecord[`${FIND_A_GRAVE_MEMORIAL_PREFIX}${memorialId}`];
-    return value ? JSON.parse(value) : undefined;
+    return await this.getObject<FindAGraveMemorialData>(`${FIND_A_GRAVE_MEMORIAL_PREFIX}${memorialId}`);
   }
 
   public async setFindAGraveMemorialData(memorialId: string, data: FindAGraveMemorialData | undefined): Promise<void> {
-    if (data === null || data === undefined) {
-      await chrome.storage.local.remove(`${FIND_A_GRAVE_MEMORIAL_PREFIX}${memorialId}`);
-    } else {
-      await chrome.storage.local.set({ [`${FIND_A_GRAVE_MEMORIAL_PREFIX}${memorialId}`]: JSON.stringify(data) });
-    }
+    await this.setObject(`${FIND_A_GRAVE_MEMORIAL_PREFIX}${memorialId}`, data);
   }
 
   // IP Address data
   public async getIpAddressData(): Promise<IpAddressData | undefined> {
-    const value = await this.get(IP_ADDRESS_DATA_KEY);
-    return value ? JSON.parse(value) : undefined;
+    return await this.getObject<IpAddressData>(IP_ADDRESS_DATA_KEY);
   }
 
   public async setIpAddressData(data: IpAddressData): Promise<void> {
-    await this.set(IP_ADDRESS_DATA_KEY, JSON.stringify(data));
+    await this.setObject(IP_ADDRESS_DATA_KEY, data);
   }
 
   // #region Private helpers
 
-  private async get(key: string): Promise<string | undefined> {
+  private async getObject<T>(key: string): Promise<T | undefined> {
+    const stringValue = await this.getString(key);
+    return stringValue ? JSON.parse(stringValue) : undefined;
+  }
+
+  private async getString(key: string): Promise<string | undefined> {
     return (await chrome.storage.local.get(key))[key];
   }
 
-  private async set(key: string, value: string | undefined): Promise<void> {
-    if (value === null || value === undefined) {
-      await chrome.storage.local.remove(key);
-    } else {
+  private async setObject<T>(key: string, value: T | undefined): Promise<void> {
+    await this.setString(key, value ? JSON.stringify(value) : undefined);
+  }
+
+  private async setString(key: string, value?: string): Promise<void> {
+    if (value) {
       await chrome.storage.local.set({ [key]: value });
+    } else {
+      await chrome.storage.local.remove(key);
     }
   }
 
-  private subscribe<T>(key: string, subscriptionId: string, callback: DataCallback<T>): void {
-    if (!this.sessionIdCallbacks.has(key)) {
-      this.sessionIdCallbacks.set(key, new Map());
+  private subscribeToSessionChange(key: string, subscriptionId: string, callback: DataCallback<Session>): void {
+    if (!this.sessionCallbacks.has(key)) {
+      this.sessionCallbacks.set(key, new Map());
     }
-    this.sessionIdCallbacks.get(key)!.set(subscriptionId, callback);
+    this.sessionCallbacks.get(key)!.set(subscriptionId, callback);
   }
 
   // #endregion

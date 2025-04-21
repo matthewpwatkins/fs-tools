@@ -5,20 +5,25 @@ export interface IpAddressData {
   createdAt: number; // timestamp when this IP address data was created
 }
 
+export interface Session {
+  sessionId: string;
+  createdAt: number; // timestamp when this session data was created
+}
+
 export interface DataStorage {
   getLatestStrageVersionId(): Promise<string | undefined>;
   setLatestStrageVersionId(versionId: string): Promise<void>;
   clear(): Promise<void>;
 
   // Anonymous session ID
-  getAnonymousSessionId(): Promise<string | undefined>;
-  setAnonymousSessionId(sessionId?: string): Promise<void>;
-  subsribeToAnonymousSessionIdChanges(subscriptionId: string, callback: (sessionId?: string) => Promise<void>): void;
+  getAnonymousSession(): Promise<Session | undefined>;
+  setAnonymousSession(session?: Session): Promise<void>;
+  subsribeToAnonymousSessionChanges(subscriptionId: string, callback: (session?: Session) => Promise<void>): void;
 
   // Authenticated session ID
-  getAuthenticatedSessionId(): Promise<string | undefined>;
-  setAuthenticatedSessionId(sessionId?: string): Promise<void>;
-  subsribeToAuthenticatedSessionIdChanges(subscriptionId: string, callback: (sessionId?: string) => Promise<void>): void;
+  getAuthenticatedSession(): Promise<Session | undefined>;
+  setAuthenticatedSession(session?: Session): Promise<void>;
+  subsribeToAuthenticatedSessionChanges(subscriptionId: string, callback: (session?: Session) => Promise<void>): void;
 
   // Memorial data (record and person IDs)
   getFindAGraveMemorialData(memorialId: string): Promise<FindAGraveMemorialData | undefined>;
