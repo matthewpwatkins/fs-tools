@@ -3,6 +3,7 @@ import { AuthenticatedApiClient } from "./fs-api/authenticated-api-client";
 import { RequestExecutor } from "./fs-api/request-executor";
 import { Page } from "./page";
 import { v4 as uuidv4 } from 'uuid';
+import semver from 'semver';
 // import { BillionGravesGravePage } from "./pages/billiongraves/billiongraves-grave-page";
 import { FamilySearchFilmPage } from "./pages/familysearch/familysearch-film-page";
 import { FamilySearchPage } from "./pages/familysearch/familysearch-page";
@@ -14,6 +15,8 @@ import { ChromeExtensionDataStorage } from "./fs-api/chrome-extension-data-stora
 import { Toast } from "./ui/toast";
 import { IpAddressManager } from "./fs-api/ip-address-manager";
 import { Session } from "./fs-api/data-storage";
+
+const CLEAR_DATA_BEFORE_VERSION = '1.0.31';
 
 async function main() {
   // Create data storage
@@ -44,11 +47,14 @@ async function main() {
   // Get current chrome extension version
   const newVersion = chrome.runtime.getManifest().version;
   const oldVersion = await dataStorage.getLatestStrageVersionId();
+  console.log(`Running FS Tools version ${newVersion}. Version at last run: ${oldVersion}`)
+
+  if (!oldVersion || semver.lt(oldVersion, CLEAR_DATA_BEFORE_VERSION)) {
+    console.log(`The previous FS Tools version is < ${CLEAR_DATA_BEFORE_VERSION}. Clearing local storage`);
+    await dataStorage.clear();
+  }
+
   if (oldVersion !== newVersion) {
-    if (!oldVersion || oldVersion < '1.0.30') {
-      console.log(`Data version upgrade detected: ${oldVersion} -> ${newVersion}. Clearing local storage`);
-      await dataStorage.clear();
-    }
     dataStorage.setLatestStrageVersionId(newVersion);
   }
 
