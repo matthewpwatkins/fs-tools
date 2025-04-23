@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "build": "rm -fr dist/* && webpack --config webpack.config.js",
-    "build:local": "IS_LOCAL_BUILD=true npm run build",
+    "build:local": "LOG_LEVEL=debug npm run build",
     "zip": "npm run build && cd dist && zip -r fs-tools.zip ./*",
     "test": "jest"
   },

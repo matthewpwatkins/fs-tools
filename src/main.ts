@@ -15,10 +15,13 @@ import { ChromeExtensionDataStorage } from "./fs-api/chrome-extension-data-stora
 import { Toast } from "./ui/toast";
 import { IpAddressManager } from "./fs-api/ip-address-manager";
 import { Session, Version } from "./fs-api/data-storage";
+import { Logger, LogLevel, parseLogLevel } from "./util/logger";
 
 const CLEAR_DATA_BEFORE_VERSION = '1.0.31';
 
 async function main() {
+  Logger.setLogLevel(parseLogLevel(process.env.LOG_LEVEL)!);
+  
   // Create data storage
   const dataStorage = new ChromeExtensionDataStorage();
   
@@ -47,6 +50,7 @@ async function main() {
   // Get current chrome extension version
   const manifest = chrome.runtime.getManifest();
   const oldVersion = await dataStorage.getLastRunVersion();
+  
   const newVersion: Version = {
     version: manifest.version,
     build: manifest.build,
@@ -54,10 +58,10 @@ async function main() {
 
   const newVersionString = `${newVersion.version}-${newVersion.build}`;
   const oldVersionString = oldVersion ? `${oldVersion.version}-${oldVersion.build}` : 'NONE';
-  console.log(`Running FS Tools version ${newVersionString}. Version at last run: ${oldVersionString}`);
+  Logger.info(`Running FS Tools version ${newVersionString}. Version at last run: ${oldVersionString}`);
 
   if (!oldVersion || semver.lt(oldVersion.version, CLEAR_DATA_BEFORE_VERSION)) {
-    console.log(`The previous FS Tools version is < ${CLEAR_DATA_BEFORE_VERSION}. Clearing local storage`);
+    Logger.warn(`The previous FS Tools version is < ${CLEAR_DATA_BEFORE_VERSION}. Clearing local storage`);
     await dataStorage.clear();
   }
 
@@ -67,10 +71,10 @@ async function main() {
 
   async function onPageChange() {
     const updateId = uuidv4().split('-')[1];
-    // console.log(`UPDATE ${updateId}: Received`);
+    Logger.trace(`UPDATE ${updateId}: Received`);
     if (updateInProgress) {
       updateQueued = true;
-      // console.log(`UPDATE ${updateId}: Terminated. Update ${updateInProgress} is in progress`);
+      Logger.trace(`UPDATE ${updateId}: Terminated. Update ${updateInProgress} is in progress`);
       return;
     }
 
@@ -78,16 +82,16 @@ async function main() {
     updateInProgress = updateId;
     updateQueued = false;
     
-    // console.log(`UPDATE ${updateId}: Running`);
+    Logger.trace(`UPDATE ${updateId}: Running`);
     try {
       await processUpdate(updateId);
     } finally {
       updateInProgress = undefined;
       if (updateQueued) {
-        // console.log(`UPDATE ${updateId}: Queuing next`);
+        Logger.trace(`UPDATE ${updateId}: Queuing next`);
         onPageChange();
       }
-      // console.log(`UPDATE ${updateId}: Completed`);
+      Logger.trace(`UPDATE ${updateId}: Completed`);
     }
   }
 

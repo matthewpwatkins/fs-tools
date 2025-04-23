@@ -4,6 +4,7 @@ import { TokenResponse } from "./models/token-response";
 import { SearchRecordsResponse } from "./models/search-records-response";
 import { GEDCOMX_JSON_TYPE, WEB_BASE_URL } from "./constants";
 import { GedcomX } from "./models/gedcomx";
+import { Logger } from "../util/logger";
 
 export class AnonymousApiClient {
   private static readonly RETRY_ERROR_STATUSES = new Set<number>([401, 403, 429]);
@@ -21,7 +22,7 @@ export class AnonymousApiClient {
   }
 
   public async fetchNewAnonymousSessionId(): Promise<Session> {
-    console.log('Getting a new anonymous session ID from FamilySearch');
+    Logger.info('Getting a new anonymous session ID from FamilySearch');
     const ipAddress = (await this.dataStorage.getIpAddressData())?.ipAddress || AnonymousApiClient.DEFAULT_IP_ADDRESS;
     const response = await this.requestExecutor.executeRequest<TokenResponse>({
       baseUrl: WEB_BASE_URL,

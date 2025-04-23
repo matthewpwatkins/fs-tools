@@ -1,4 +1,5 @@
 import { DataStorage, IpAddressData } from "./data-storage";
+import { Logger } from "../util/logger";
 
 // IP address TTL in milliseconds (3 hours)
 const IP_ADDRESS_TTL_MS = 3 * 60 * 60 * 1000;
@@ -15,7 +16,7 @@ export class IpAddressManager {
     if (!ipAddressData || now - ipAddressData.createdAt > IP_ADDRESS_TTL_MS) {
       // Use existing IP if available while we fetch a new one
       this.fetchAndUpdateIpAddress(dataStorage).catch(err => {
-        console.error('Failed to update IP address:', err);
+        Logger.error('Failed to update IP address:', err);
       });
     }
   }
@@ -37,10 +38,10 @@ export class IpAddressManager {
           createdAt: Date.now()
         };
         await dataStorage.setIpAddressData(ipAddressData);
-        console.log(`Updated IP address: ${data.ip}`);
+        Logger.info(`Updated IP address: ${data.ip}`);
       }
     } catch (error) {
-      console.error('Error fetching IP address:', error);
+      Logger.error('Error fetching IP address:', error);
     }
   }
 }

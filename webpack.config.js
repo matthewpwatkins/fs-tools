@@ -3,6 +3,7 @@ const CopyPlugin = require('copy-webpack-plugin');
 const fs = require('fs');
 const packageJson = require('./package.json');
 const childProcess = require('child_process');
+const webpack = require('webpack');
 
 module.exports = {
   mode: "production",
@@ -31,6 +32,9 @@ module.exports = {
         { from: "manifest.json", to: "manifest.json" },
         { from: "icons/*.png", to: "icons/[name][ext]" }
       ]
+    }),
+    new webpack.DefinePlugin({
+      'process.env.LOG_LEVEL': JSON.stringify(process.env.LOG_LEVEL || 'warn'),
     }),
     {
       apply: (compiler) => {

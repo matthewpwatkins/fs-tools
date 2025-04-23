@@ -3,6 +3,7 @@ import { RequestExecutor, RequestProps } from "./request-executor";
 import { GedcomX } from "./models/gedcomx";
 import { SourceAttachment } from "./models/source-attachment";
 import { API_BASE_URL, WEB_BASE_URL, GEDCOMX_JSON_TYPE } from "./constants";
+import { Logger } from "../util/logger";
 
 export class AuthenticatedApiClient {
   private requestExecutor: RequestExecutor;
@@ -61,7 +62,7 @@ export class AuthenticatedApiClient {
     } catch (error) {
       // Clear session ID if authentication failed
       if (error instanceof Error && (error.message.includes('status 401') || error.message.includes('status 403'))) {
-        console.warn('Authenticated session expired. Clearing it.');
+        Logger.warn('Authentication error. Clearing session ID.');
         await this.dataStorage.setAuthenticatedSession(undefined);
       }
       throw error;

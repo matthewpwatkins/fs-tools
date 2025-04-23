@@ -5,6 +5,7 @@ import { DataStorage } from "../../fs-api/data-storage";
 import { FindAGraveMemorialData, IdStatus } from "../../models/findagrave-memorial-data";
 import { AnonymousApiClient } from "../../fs-api/anonymous-api-client";
 import { AuthenticatedApiClient } from "../../fs-api/authenticated-api-client";
+import { Logger } from "../../util/logger";
 
 /**
  * Memorial element data tracking
@@ -461,7 +462,7 @@ export class FindAGravePage implements Page {
 
   private async lookupRecordId(memorial: Memorial): Promise<void> {
     try {
-      console.log(`Looking up record ID for memorial ${memorial.memorialId}`, memorial);
+      Logger.debug(`Looking up record ID for memorial ${memorial.memorialId}`, memorial);
       const searchRecordsResponse = await this.anonymousFsApiClient.searchRecords(new URLSearchParams({
         'q.externalRecordId': memorial.memorialId,
         'f.collectionId': FINDAGRAVE_COLLECTION_ID
@@ -487,7 +488,7 @@ export class FindAGravePage implements Page {
       }
       await this.dataStorage.setFindAGraveMemorialData(memorial.memorialId, memorial.data);
     } catch (error) {
-      console.error(`Error looking up record ID for memorial ${memorial.memorialId}`, error);
+      Logger.error(`Error looking up record ID for memorial ${memorial.memorialId}`, error);
     }
   }
 
@@ -495,7 +496,7 @@ export class FindAGravePage implements Page {
     try {
       if (!await this.dataStorage.getAuthenticatedSession()) return;
 
-      console.log(`Looking up person ID for memorial ${memorial.memorialId}`, memorial);
+      Logger.debug(`Looking up person ID for memorial ${memorial.memorialId}`, memorial);
       const attachments = await this.authenticatedFsApiClient.getAttachmentsForRecord(memorial.data.recordId!);
       if (attachments && attachments.length > 0 && attachments[0].persons?.length > 0) {
         const personId = attachments[0].persons[0].entityId;
@@ -507,7 +508,7 @@ export class FindAGravePage implements Page {
       }
       await this.dataStorage.setFindAGraveMemorialData(memorial.memorialId, memorial.data);
     } catch (error) {
-      console.error(`Error looking up person ID for memorial ${memorial.memorialId}`, error);
+      Logger.error(`Error looking up person ID for memorial ${memorial.memorialId}`, error);
     }
   }
 
