@@ -1,8 +1,8 @@
-import { DataStorage, IpAddressData, Session } from "./data-storage";
+import { DataStorage, IpAddressData, Session, Version } from "./data-storage";
 import { FindAGraveMemorialData } from "../models/findagrave-memorial-data";
 
 // Define constants for magic strings
-const LATEST_STORAGE_VERSION_ID_KEY = 'latest-storage-version-id';
+const LAST_RUN_VERSION = 'last-run-version';
 const ANONYMOUS_SESSION_ID_KEY = 'anonymous-fs-session';
 const AUTHENTICATED_SESSION_ID_KEY = 'authenticated-fs-session';
 const ALL_SESSION_ID_KEYS = [ANONYMOUS_SESSION_ID_KEY, AUTHENTICATED_SESSION_ID_KEY];
@@ -29,12 +29,12 @@ export class ChromeExtensionDataStorage implements DataStorage {
     });
   }
 
-  public async getLatestStrageVersionId(): Promise<string | undefined> {
-    return await this.getString(LATEST_STORAGE_VERSION_ID_KEY);
+  public async getLastRunVersion(): Promise<Version | undefined> {
+    return await this.getObject<Version>(LAST_RUN_VERSION);
   }
 
-  public async setLatestStrageVersionId(versionId: string): Promise<void> {
-    await this.setString(LATEST_STORAGE_VERSION_ID_KEY, versionId);
+  public async setLastRunVersion(version: Version): Promise<void> {
+    await this.setObject(LAST_RUN_VERSION, version);
   }
 
   public async clear(): Promise<void> {

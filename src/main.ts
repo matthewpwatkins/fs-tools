@@ -14,7 +14,7 @@ import { FindAGravePage } from "./pages/findagrave/findagrave-page";
 import { ChromeExtensionDataStorage } from "./fs-api/chrome-extension-data-storage";
 import { Toast } from "./ui/toast";
 import { IpAddressManager } from "./fs-api/ip-address-manager";
-import { Session } from "./fs-api/data-storage";
+import { Session, Version } from "./fs-api/data-storage";
 
 const CLEAR_DATA_BEFORE_VERSION = '1.0.31';
 
@@ -45,17 +45,24 @@ async function main() {
   let updateInProgress: string | undefined;
 
   // Get current chrome extension version
-  const newVersion = chrome.runtime.getManifest().version;
-  const oldVersion = await dataStorage.getLatestStrageVersionId();
-  console.log(`Running FS Tools version ${newVersion}. Version at last run: ${oldVersion}`)
+  const manifest = chrome.runtime.getManifest();
+  const oldVersion = await dataStorage.getLastRunVersion();
+  const newVersion: Version = {
+    version: manifest.version,
+    build: manifest.build,
+  };
 
-  if (!oldVersion || semver.lt(oldVersion, CLEAR_DATA_BEFORE_VERSION)) {
+  const newVersionString = `${newVersion.version}-${newVersion.build}`;
+  const oldVersionString = oldVersion ? `${oldVersion.version}-${oldVersion.build}` : 'NONE';
+  console.log(`Running FS Tools version ${newVersionString}. Version at last run: ${oldVersionString}`);
+
+  if (!oldVersion || semver.lt(oldVersion.version, CLEAR_DATA_BEFORE_VERSION)) {
     console.log(`The previous FS Tools version is < ${CLEAR_DATA_BEFORE_VERSION}. Clearing local storage`);
     await dataStorage.clear();
   }
 
-  if (oldVersion !== newVersion) {
-    dataStorage.setLatestStrageVersionId(newVersion);
+  if (newVersionString !== oldVersionString) {
+    dataStorage.setLastRunVersion(newVersion);
   }
 
   async function onPageChange() {

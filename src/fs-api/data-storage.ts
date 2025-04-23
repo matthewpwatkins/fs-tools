@@ -5,14 +5,19 @@ export interface IpAddressData {
   createdAt: number; // timestamp when this IP address data was created
 }
 
+export interface Version {
+  version: string;
+  build: string;
+}
+
 export interface Session {
   sessionId: string;
   createdAt: number; // timestamp when this session data was created
 }
 
 export interface DataStorage {
-  getLatestStrageVersionId(): Promise<string | undefined>;
-  setLatestStrageVersionId(versionId: string): Promise<void>;
+  getLastRunVersion(): Promise<Version | undefined>;
+  setLastRunVersion(version: Version): Promise<void>;
   clear(): Promise<void>;
 
   // Anonymous session ID
