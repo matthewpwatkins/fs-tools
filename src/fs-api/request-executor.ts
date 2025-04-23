@@ -1,3 +1,5 @@
+import { Logger } from "../util/logger";
+
 export interface RequestProps {
   baseUrl: string;
   path: string;
@@ -76,16 +78,25 @@ export class RequestExecutor {
       },
     };
     
+    const startTime = Date.now();
+    let endTime = 0;
     try {
+      Logger.debug(`Issuing request to ${urlString} with options:`, requestInit);
       const fetchResponse = await fetch(urlString,{
         ...requestInit,
         signal: AbortSignal.timeout(RequestExecutor.REQUEST_TIMEOUT_MS)
       });
       await this.populateApiResponseFieldsFromFetchResponse<T>(apiResponse, fetchResponse);
+      endTime = Date.now();
     } catch (err: any) {
+      Logger.error(`Error occurred issuing request to ${urlString}: ${err}`);
       this.populateApiResponseFieldsFromError<T>(apiResponse, err);
+      endTime = Date.now();
     }
+    endTime = endTime || Date.now();
+    const duration = endTime - startTime;
 
+    Logger.debug(`Finished request to ${urlString} after ${duration}ms. Result:`, apiResponse);
     return apiResponse;
   }
 
