@@ -1,6 +1,6 @@
-export function getCookie(name: string): string | undefined {
+export function getCookie(cookieString: string, name: string): string | undefined {
   const nameEQ = name + "=";
-  const ca = document.cookie.split(';');
+  const ca = cookieString.split(';');
   for (var i = 0; i < ca.length; i++) {
     let c = ca[i];
     while (c.charAt(0) == ' ') c = c.substring(1, c.length);
@@ -9,6 +9,6 @@ export function getCookie(name: string): string | undefined {
   return undefined;
 }
 
-export function getFamilySearchSessionIdFromCookie(): string | undefined {
-  return getCookie('fssessionid');
+export function getFamilySearchSessionIdFromCookie(cookieString: string): string | undefined {
+  return getCookie(cookieString, 'fssessionid');
 }

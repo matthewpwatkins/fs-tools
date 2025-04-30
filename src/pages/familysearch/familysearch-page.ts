@@ -29,7 +29,7 @@ export class FamilySearchPage implements Page {
   }
 
   async onPageEnter(): Promise<void> {
-    await this.updateAuthenticaledSession();
+    await this.updateAuthenticatedSession();
   }
 
   async onPageExit(): Promise<void> {
@@ -39,11 +39,11 @@ export class FamilySearchPage implements Page {
   async onPageContentUpdate(updateID: string): Promise<void> {
     this.injectFullTextSearchMenuItem();
     this.addFullTextViewParameterToFilmLinks();
-    await this.updateAuthenticaledSession();
+    await this.updateAuthenticatedSession();
   }
 
-  private async updateAuthenticaledSession(): Promise<void> {
-    const currentSessionId = getFamilySearchSessionIdFromCookie();
+  private async updateAuthenticatedSession(): Promise<void> {
+    const currentSessionId = getFamilySearchSessionIdFromCookie(document.cookie);
     if (currentSessionId !== this.authenticatedSessionId) {
       this.authenticatedSessionId = currentSessionId;
       await this.dataStorage.setAuthenticatedSession({
