@@ -1,4 +1,4 @@
-import { SEARCH_ICON_HTML } from "../icons";
+import { SEARCH_ICON_HTML } from "../ui/icons";
 
 export type FullTextSearchFormProps = {
   id: string;

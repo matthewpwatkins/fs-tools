@@ -1,8 +1,8 @@
-import { DataStorage, Session } from "./data-storage";
+import { DataStorage, Session } from "../data/data-storage";
 import { RequestExecutor, RequestProps } from "./request-executor";
 import { GedcomX } from "./models/gedcomx";
 import { SourceAttachment } from "./models/source-attachment";
-import { API_BASE_URL, WEB_BASE_URL, GEDCOMX_JSON_TYPE } from "./constants";
+import { API_BASE_URL, WEB_BASE_URL, GEDCOMX_JSON_TYPE } from "../constants";
 import { Logger } from "../util/logger";
 
 export class AuthenticatedApiClient {

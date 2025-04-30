@@ -1,6 +1,6 @@
 import { AnonymousApiClient } from "../../fs-api/anonymous-api-client";
-import { SEARCH_ICON_HTML } from "../../icons";
-import { Page } from "../../page";
+import { SEARCH_ICON_HTML } from "../../ui/icons";
+import { Page } from "../page";
 import { createFullTextSearchForm } from "../../util/familysearch-utils";
 import { buildSearchUrlForPerson, SearchDetailLevel } from "../../util/gedcomx-utils";
 

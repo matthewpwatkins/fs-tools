@@ -1,7 +1,7 @@
 import { AnonymousApiClient } from "./fs-api/anonymous-api-client";
 import { AuthenticatedApiClient } from "./fs-api/authenticated-api-client";
 import { RequestExecutor } from "./fs-api/request-executor";
-import { Page } from "./page";
+import { Page } from "./pages/page";
 import { v4 as uuidv4 } from 'uuid';
 import semver from 'semver';
 // import { BillionGravesGravePage } from "./pages/billiongraves/billiongraves-grave-page";
@@ -11,10 +11,10 @@ import { FamilySearchPersonDetailsPage } from "./pages/familysearch/familysearch
 import { FamilySearchRecordPage } from "./pages/familysearch/familysearch-record-page";
 import { FamilySearchSearchResultsPage } from "./pages/familysearch/familysearch-search-results-page";
 import { FindAGravePage } from "./pages/findagrave/findagrave-page";
-import { ChromeExtensionDataStorage } from "./fs-api/chrome-extension-data-storage";
+import { ChromeExtensionDataStorage } from "./data/chrome-extension-data-storage";
 import { Toast } from "./ui/toast";
-import { IpAddressManager } from "./fs-api/ip-address-manager";
-import { Session, Version } from "./fs-api/data-storage";
+import { IpAddressManager } from "./util/ip-address-manager";
+import { Session, Version } from "./data/data-storage";
 import { Logger, LogLevel, parseLogLevel } from "./util/logger";
 
 const CLEAR_DATA_BEFORE_VERSION = '1.0.31';

@@ -1,7 +1,7 @@
 import { FINDAGRAVE_COLLECTION_ID } from "../../constants";
-import { FS_FAVICON_URL, PERSON_ICON_HTML, RECORD_ICON_HTML, REFRESH_ICON_HTML, styleIcon } from "../../icons";
-import { Page } from "../../page";
-import { DataStorage } from "../../fs-api/data-storage";
+import { FS_FAVICON_URL, PERSON_ICON_HTML, RECORD_ICON_HTML, REFRESH_ICON_HTML, styleIcon } from "../../ui/icons";
+import { Page } from "../page";
+import { DataStorage } from "../../data/data-storage";
 import { FindAGraveMemorialData, IdStatus } from "../../models/findagrave-memorial-data";
 import { AnonymousApiClient } from "../../fs-api/anonymous-api-client";
 import { AuthenticatedApiClient } from "../../fs-api/authenticated-api-client";

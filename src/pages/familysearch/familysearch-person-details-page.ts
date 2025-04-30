@@ -1,5 +1,5 @@
 import { AuthenticatedApiClient } from "../../fs-api/authenticated-api-client";
-import { Page } from "../../page";
+import { Page } from "../page";
 import { buildSearchUrlForPerson, SearchDetailLevel } from "../../util/gedcomx-utils";
 
 /**

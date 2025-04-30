@@ -1,5 +1,5 @@
-import { DataStorage } from "../../fs-api/data-storage";
-import { Page } from "../../page";
+import { DataStorage } from "../../data/data-storage";
+import { Page } from "../page";
 import { getFamilySearchSessionIdFromCookie } from "../../util/cookie-utils";
 
 /**

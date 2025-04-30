@@ -1,5 +1,5 @@
-import { FS_FAVICON_URL } from "../../icons";
-import { Page } from "../../page";
+import { FS_FAVICON_URL } from "../../ui/icons";
+import { Page } from "../page";
 
 /**
  * Runs on all BillionGraves grave pages.

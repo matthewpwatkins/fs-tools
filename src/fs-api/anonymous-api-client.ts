@@ -1,8 +1,8 @@
-import { DataStorage, Session } from "./data-storage";
+import { DataStorage, Session } from "../data/data-storage";
 import { ApiResponse, RequestExecutor, RequestProps } from "./request-executor";
 import { TokenResponse } from "./models/token-response";
 import { SearchRecordsResponse } from "./models/search-records-response";
-import { GEDCOMX_JSON_TYPE, WEB_BASE_URL } from "./constants";
+import { GEDCOMX_JSON_TYPE, WEB_BASE_URL } from "../constants";
 import { GedcomX } from "./models/gedcomx";
 import { Logger } from "../util/logger";
 

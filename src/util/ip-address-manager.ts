@@ -1,5 +1,5 @@
-import { DataStorage, IpAddressData } from "./data-storage";
-import { Logger } from "../util/logger";
+import { DataStorage, IpAddressData } from "../data/data-storage";
+import { Logger } from "./logger";
 
 // IP address TTL in milliseconds (3 hours)
 const IP_ADDRESS_TTL_MS = 3 * 60 * 60 * 1000;
