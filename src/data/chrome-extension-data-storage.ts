@@ -1,5 +1,5 @@
 import { DataStorage, IpAddressData, Session, Version } from "./data-storage";
-import { FindAGraveMemorialData } from "../models/findagrave-memorial-data";
+import { FindAGraveMemorialData } from "./models/findagrave-memorial-data";
 
 // Define constants for magic strings
 const LAST_RUN_VERSION = 'last-run-version';

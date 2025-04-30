@@ -1,4 +1,4 @@
-import { FindAGraveMemorialData } from "../models/findagrave-memorial-data";
+import { FindAGraveMemorialData } from "./models/findagrave-memorial-data";
 
 export interface IpAddressData {
   ipAddress: string;
