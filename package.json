@@ -5,7 +5,7 @@
   "scripts": {
     "build": "rm -fr dist/* && webpack --config webpack.config.js",
     "build:local": "LOG_LEVEL=debug npm run build",
-    "zip": "npm run build && cd dist && zip -r fs-tools.zip ./*",
+    "zip": "npm run build && cd dist && zip -r fs-tools.zip ./* && mv fs-tools.zip ../fs-tools.zip",
     "test": "jest"
   },
   "keywords": [],
