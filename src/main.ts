@@ -16,6 +16,7 @@ import { Toast } from "./ui/toast";
 import { IpAddressManager } from "./util/ip-address-manager";
 import { Session, Version } from "./data/data-storage";
 import { Logger, LogLevel, parseLogLevel } from "./util/logger";
+import { FindAGraveMemorialUpdater } from "./pages/findagrave/findagrave-memorial-updater";
 
 const CLEAR_DATA_BEFORE_VERSION = '1.0.31';
 
@@ -32,6 +33,8 @@ async function main() {
   // Handle IP address data
   await IpAddressManager.checkAndUpdateIpAddress(dataStorage);
 
+  const findAGraveMemorialUpdater = new FindAGraveMemorialUpdater(dataStorage, anonymousClient, authenticatedClient);
+
   const ALL_PAGES: Page[] = [
     // new BillionGravesGravePage(),
     new FamilySearchPage(dataStorage),
@@ -39,7 +42,7 @@ async function main() {
     new FamilySearchPersonDetailsPage(authenticatedClient),
     new FamilySearchRecordPage(anonymousClient),
     new FamilySearchSearchResultsPage(),  
-    new FindAGravePage(dataStorage, anonymousClient, authenticatedClient)
+    new FindAGravePage(findAGraveMemorialUpdater)
   ];
   
   let currentURL: URL | undefined;
