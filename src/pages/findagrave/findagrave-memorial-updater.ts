@@ -13,8 +13,6 @@ export interface Memorial {
 }
 
 export class FindAGraveMemorialUpdater {
-  private static readonly MIN_PROCESSING_TIME_MS = 500;
-
   // Callbacks
   public onMemorialUpdateStart?: ((memorialId: string) => void);
   public onMemorialDataUpdate?: ((memorialId: string, data: FindAGraveMemorialData) => void);
@@ -23,6 +21,7 @@ export class FindAGraveMemorialUpdater {
   private readonly dataStorage: DataStorage;
   private readonly anonymousFsApiClient: AnonymousApiClient;
   private readonly authenticatedFsApiClient: AuthenticatedApiClient;
+  private readonly minProcessingTimeMs: number;
   
   // Track memorials independently of DOM elements
   private memorials = new Map<string, Memorial>();
@@ -32,11 +31,13 @@ export class FindAGraveMemorialUpdater {
   constructor(
     dataStorage: DataStorage,
     anonymousFsApiClient: AnonymousApiClient,
-    authenticatedFsApiClient: AuthenticatedApiClient
+    authenticatedFsApiClient: AuthenticatedApiClient,
+    minProcessingTimeMs: number
   ) {
     this.dataStorage = dataStorage;
     this.anonymousFsApiClient = anonymousFsApiClient;
     this.authenticatedFsApiClient = authenticatedFsApiClient;
+    this.minProcessingTimeMs = minProcessingTimeMs;
   }
 
   // New method for the page to add a memorial ID that was found on the page
@@ -120,7 +121,7 @@ export class FindAGraveMemorialUpdater {
       
       // Wait if needed
       const elapsedTime = Date.now() - processingStartMs;
-      const processingStopSignalDelay = Math.max(0, FindAGraveMemorialUpdater.MIN_PROCESSING_TIME_MS - elapsedTime);
+      const processingStopSignalDelay = Math.max(0, this.minProcessingTimeMs - elapsedTime);
       if (processingStopSignalDelay > 0) {
         await new Promise(resolve => setTimeout(resolve, processingStopSignalDelay));
       }
