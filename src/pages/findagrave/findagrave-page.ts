@@ -124,6 +124,7 @@ export class FindAGravePage implements Page {
       this.scanIsDirty = false;
 
       // Scan header element (memorial details page)
+      Logger.debug('Scanning for memorials in headers...');
       const memorialNameHeader = document.getElementById('bio-name') as HTMLHeadingElement;
       if (memorialNameHeader) {
         const memorialId = this.extractMemorialIdFromLocation();
@@ -133,6 +134,7 @@ export class FindAGravePage implements Page {
       }
 
       // Scan all memorial links
+      Logger.debug('Scanning for memorials in links...');
       for (const link of document.querySelectorAll<HTMLAnchorElement>('a[href^="/memorial/"]')) {
         const memorialId = this.extractMemorialIdFromUrl(link.href);
         if (memorialId) {

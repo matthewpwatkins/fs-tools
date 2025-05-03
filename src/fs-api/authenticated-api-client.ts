@@ -37,6 +37,18 @@ export class AuthenticatedApiClient {
     });
   }
   
+  public async getPersonsForRecords(recordIds: string[]): Promise<Record<string, string>> {
+    if (recordIds.length === 0) return {};
+    
+    return this.executeAuthenticatedRequest<Record<string, string>>({
+      baseUrl: WEB_BASE_URL,
+      path: '/match/resolutions/match/bulk',
+      queryStringParams: new URLSearchParams({
+        'ids': recordIds.join(',')
+      })
+    });
+  }
+  
   private async getAuthenticatedSession(): Promise<Session> {
     const session = await this.dataStorage.getAuthenticatedSession();
     if (!session) {
