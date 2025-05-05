@@ -37,7 +37,8 @@ async function main() {
     dataStorage, 
     anonymousClient, 
     authenticatedClient,
-    500 // Explicit 500ms minimum processing time for production
+    500, // Explicit 500ms minimum record processing time
+    10_000 // Explicit 10s max person batch interval
   );
 
   const ALL_PAGES: Page[] = [

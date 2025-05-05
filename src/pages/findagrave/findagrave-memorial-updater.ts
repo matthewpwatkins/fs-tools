@@ -25,6 +25,7 @@ export class FindAGraveMemorialUpdater {
   private readonly anonymousFsApiClient: AnonymousApiClient;
   private readonly authenticatedFsApiClient: AuthenticatedApiClient;
   private readonly minRecordProcessingTimeMs: number;
+  private readonly maxPersonBatchIntervalMs: number;
   private readonly isAuthenticated: boolean;
 
   private readonly memorials = new Map<string, Memorial>();
@@ -33,17 +34,20 @@ export class FindAGraveMemorialUpdater {
   
   private isProcessingRecordQueue = false;
   private isProcessingPersonQueue = false;
+  private personQueueProcessingTimeout?: NodeJS.Timeout;
 
   constructor(
     dataStorage: DataStorage,
     anonymousFsApiClient: AnonymousApiClient,
     authenticatedFsApiClient: AuthenticatedApiClient,
-    minProcessingTimeMs: number
+    minRecordProcessingTimeMs: number,
+    maxPersonBatchIntervalMs: number
   ) {
     this.dataStorage = dataStorage;
     this.anonymousFsApiClient = anonymousFsApiClient;
     this.authenticatedFsApiClient = authenticatedFsApiClient;
-    this.minRecordProcessingTimeMs = minProcessingTimeMs;
+    this.minRecordProcessingTimeMs = minRecordProcessingTimeMs;
+    this.maxPersonBatchIntervalMs = maxPersonBatchIntervalMs;
     this.isAuthenticated = !!this.dataStorage.getAuthenticatedSession();
   }
 
@@ -181,7 +185,7 @@ export class FindAGraveMemorialUpdater {
     }
   }
 
-  private async processPersonQueue(): Promise<void> {
+  private async processPersonQueue(minBatchSizeOverride?: number): Promise<void> {
     if (this.isProcessingPersonQueue) {
       return;
     }
@@ -190,14 +194,18 @@ export class FindAGraveMemorialUpdater {
       return;
     }
     
-    if (this.personQueue.size < FindAGraveMemorialUpdater.MIN_PERSON_BATCH_SIZE) {
-      // TODO: Set 15 second timeout if not already set
+    const minBatchSize = minBatchSizeOverride || FindAGraveMemorialUpdater.MIN_PERSON_BATCH_SIZE;
+    if (this.personQueue.size && this.personQueue.size < minBatchSize) {
+      // Not enough items in the queue to process. Check again later
+      if (!this.personQueueProcessingTimeout) {
+        this.personQueueProcessingTimeout = setTimeout(() => this.processPersonQueue(1), this.maxPersonBatchIntervalMs);
+      }
       return;
     }
     
     this.isProcessingPersonQueue = true;
     try {
-      while (this.personQueue.size >= FindAGraveMemorialUpdater.MIN_PERSON_BATCH_SIZE) {
+      while (this.personQueue.size) {
         await this.processPersonBatchFromQueue(Array.from(this.personQueue)
           .slice(0, FindAGraveMemorialUpdater.MAX_PERSON_BATCH_SIZE)
           .map(id => this.memorials.get(id)!));
