@@ -26,7 +26,6 @@ export class FindAGraveMemorialUpdater {
   private readonly authenticatedFsApiClient: AuthenticatedApiClient;
   private readonly minRecordProcessingTimeMs: number;
   private readonly maxPersonBatchIntervalMs: number;
-  private readonly isAuthenticated: boolean;
 
   private readonly memorials = new Map<string, Memorial>();
   private readonly recordQueue: Set<string> = new Set();
@@ -48,7 +47,6 @@ export class FindAGraveMemorialUpdater {
     this.authenticatedFsApiClient = authenticatedFsApiClient;
     this.minRecordProcessingTimeMs = minRecordProcessingTimeMs;
     this.maxPersonBatchIntervalMs = maxPersonBatchIntervalMs;
-    this.isAuthenticated = !!this.dataStorage.getAuthenticatedSession();
   }
 
   // New method for the page to add a memorial ID that was found on the page
@@ -130,9 +128,9 @@ export class FindAGraveMemorialUpdater {
         memorial.isProcessing = false;
         this.onMemorialDataUpdate?.(memorial.memorialId, memorial.data);
         this.onMemorialUpdateEnd?.(memorial.memorialId);
-        const processingTimeDelay = Math.max(0, this.minRecordProcessingTimeMs - (processingEnd - processingStart));
-        if (processingTimeDelay > 0) {
-          await new Promise(resolve => setTimeout(resolve, processingTimeDelay));
+        const processingTimeDelayMs = Math.max(0, this.minRecordProcessingTimeMs - (processingEnd - processingStart));
+        if (processingTimeDelayMs > 0) {
+          await new Promise(resolve => setTimeout(resolve, processingTimeDelayMs));
         }
       }
     }
@@ -178,10 +176,6 @@ export class FindAGraveMemorialUpdater {
       Logger.debug(`Person ID status already set for memorial ${memorial.memorialId}`);
       return;
     }
-    if (!this.isAuthenticated) {
-      Logger.debug(`Not authenticated. Cannot look up person ID for memorial ${memorial.memorialId}`);
-      return;
-    }
     if (!this.personQueue.has(memorial.memorialId)) {
       this.personQueue.add(memorial.memorialId);
       this.processPersonQueue();
@@ -194,6 +188,13 @@ export class FindAGraveMemorialUpdater {
     }
 
     if (this.personQueue.size === 0) {
+      return;
+    }
+
+    const authSession = await this.dataStorage.getAuthenticatedSession();
+    if (!authSession) {
+      Logger.debug(`No authenticated session. Cannot process person queue`);
+      this.personQueue.clear();
       return;
     }
     
