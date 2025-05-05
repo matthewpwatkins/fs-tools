@@ -54,21 +54,22 @@ export class FindAGraveMemorialUpdater {
     if (!memorial) {
       Logger.debug(`Adding memorial ${memorialId} to the updater`);
       const data = await this.dataStorage.getFindAGraveMemorialData(memorialId) || new FindAGraveMemorialData();
-      memorial = {
-        memorialId,
-        data,
-        isProcessing: false
-      };
+      memorial = { memorialId, data, isProcessing: false };
       this.memorials.set(memorialId, memorial);
-      this.queueForRecordLookup(memorial);
+      this.onMemorialDataUpdate?.(memorialId, data);
+      if (!this.recordQueue.has(memorial.memorialId)) {
+        this.recordQueue.add(memorial.memorialId);
+        // Start processing the record queue on a new thread
+        this.processRecordQueue();
+      }
     }
 
     return memorial;
   }
 
   // New method for the page to manually trigger an update (refresh button)
-  public triggerMemorialUpdate(memorialId: string): Promise<void> {
-    return this.forceProcessMemorial(memorialId);
+  public async triggerMemorialUpdate(memorialId: string): Promise<void> {
+    await this.forceProcessMemorial(memorialId);
   }
 
   // Get a record search URL for a memorial
@@ -78,71 +79,60 @@ export class FindAGraveMemorialUpdater {
 
   // #region Private helpers
 
-  private queueForRecordLookup(memorial: Memorial): void {
-    if (!this.recordQueue.has(memorial.memorialId)) {
-      this.recordQueue.add(memorial.memorialId);
-      this.processRecordQueue();
-    }
-  }
-
   private async processRecordQueue(): Promise<void> {
     if (this.isProcessingRecordQueue) {
-      Logger.trace(`Record queue is already being processed`);
       return;
     }
 
     this.isProcessingRecordQueue = true;
-    Logger.debug(`Processing record queue with ${this.recordQueue.size} items`);
-
     try {
-      while (true) {
-        const memorialId = this.recordQueue.values().next().value;
-        if (!memorialId) {
-          break;
-        }
-
-        const memorial = this.memorials.get(memorialId)!;
-        try {
-          await this.processRecordFromQueue(memorial);
-        } catch (error) {
-          Logger.error(`Error processing memorial ${memorialId}`, error);
-        } finally {
-          this.recordQueue.delete(memorialId);
+      while (this.recordQueue.size) {
+        Logger.debug(`Processing record queue, size=${this.recordQueue.size}`);
+        for (const memorialId of this.recordQueue) {
+          const memorial = this.memorials.get(memorialId)!;
+          try {
+            await this.processRecordFromQueue(memorial);
+          } catch (error) {
+            Logger.error(`Error processing memorial ${memorialId}`, error);
+          } finally {
+            this.recordQueue.delete(memorialId);
+          }
         }
       }
+    } catch (err) {
+      Logger.error(`Error processing record queue`, err);
     } finally {
       this.isProcessingRecordQueue = false;
     }
   }
 
   private async processRecordFromQueue(memorial: Memorial): Promise<void> {
-    const shouldLookupRecord = memorial.data.recordIdStatus === IdStatus.UNKNOWN;
-    const shouldLookupPerson = memorial.data.personIdStatus === IdStatus.UNKNOWN && this.isAuthenticated;
+    Logger.debug(`Processing record for memorial ${memorial.memorialId}`, memorial);
 
-    if (!shouldLookupRecord && !shouldLookupPerson) {
-      return;
+    if (memorial.data.recordIdStatus === IdStatus.UNKNOWN) {
+      memorial.isProcessing = true;
+      this.onMemorialUpdateStart?.(memorial.memorialId);
+      try {
+        await this.lookupRecordId(memorial);
+        this.onMemorialDataUpdate?.(memorial.memorialId, memorial.data);
+      } catch (err) {
+        Logger.error(`Error looking up record ID for memorial ${memorial.memorialId}`, err);
+        memorial.data.recordIdStatus = IdStatus.NONE;
+        memorial.data.recordId = undefined;
+        await this.dataStorage.setFindAGraveMemorialData(memorial.memorialId, memorial.data);
+      } finally {
+        memorial.isProcessing = false;
+        this.onMemorialDataUpdate?.(memorial.memorialId, memorial.data);
+        this.onMemorialUpdateEnd?.(memorial.memorialId);
+      }
     }
 
-    Logger.trace(`Processing memorial ${memorial.memorialId}, shouldLookupRecord=${shouldLookupRecord}, shouldLookupPerson=${shouldLookupPerson}`, memorial);
-    memorial.isProcessing = true;
-    this.onMemorialUpdateStart?.(memorial.memorialId);
-    if (shouldLookupRecord) {
-      await this.lookupRecordId(memorial);
-      this.onMemorialDataUpdate?.(memorial.memorialId, memorial.data);
-    }
-
-    if (shouldLookupPerson) {
-      this.queueForPersonLookup(memorial);
-    } else {
-      memorial.isProcessing = false;
-      this.onMemorialUpdateEnd?.(memorial.memorialId);
-    }
+    this.queueForPersonLookup(memorial);
   }
 
   private async lookupRecordId(memorial: Memorial): Promise<void> {
-    Logger.trace(`Looking up record ID for memorial ${memorial.memorialId}`, memorial);
+    Logger.debug(`Looking up record ID for memorial ${memorial.memorialId}`, memorial);
     try {
-      Logger.debug(`Looking up record ID for memorial ${memorial.memorialId}`, memorial);
       const searchRecordsResponse = await this.anonymousFsApiClient.searchRecords(new URLSearchParams({
         'q.externalRecordId': memorial.memorialId,
         'f.collectionId': FINDAGRAVE_COLLECTION_ID
@@ -170,6 +160,15 @@ export class FindAGraveMemorialUpdater {
   }
 
   private queueForPersonLookup(memorial: Memorial): void {
+    if (memorial.data.recordIdStatus !== IdStatus.FOUND) {
+      return;
+    }
+    if (memorial.data.personIdStatus !== IdStatus.NONE) {
+      return;
+    }
+    if (!this.isAuthenticated) {
+      return;
+    }
     if (!this.personQueue.has(memorial.memorialId)) {
       this.personQueue.add(memorial.memorialId);
       this.processPersonQueue();
@@ -193,36 +192,9 @@ export class FindAGraveMemorialUpdater {
     this.isProcessingPersonQueue = true;
     try {
       while (this.personQueue.size >= FindAGraveMemorialUpdater.MIN_PERSON_BATCH_SIZE) {
-        const batch = Array.from(this.personQueue).slice(0, FindAGraveMemorialUpdater.MAX_PERSON_BATCH_SIZE);
-        batch.forEach(id => this.personQueue.delete(id));
-        
-        const memorials = batch.map(id => this.memorials.get(id)).filter((m): m is Memorial => !!m);
-        const memorialsByRecordId = new Map<string, Memorial>();
-        for (const memorial of memorials) {
-          memorialsByRecordId.set(memorial.data.recordId!, memorial);
-        }
-
-        // Update each memorial with its person ID result
-        Logger.trace(`Looking up person IDs for ${memorials.length} memorials`, memorials);
-        const personMap = await this.authenticatedFsApiClient.getPersonsForRecords(Array.from(memorialsByRecordId.keys()));
-        for (const memorial of memorials) {
-          const recordId = memorial.data.recordId!;
-          const personId = personMap[recordId];
-
-          if (personId) {
-            memorial.data.personId = personId;
-            memorial.data.personIdStatus = IdStatus.FOUND;
-          } else {
-            memorial.data.personId = undefined;
-            memorial.data.personIdStatus = IdStatus.NONE;
-          }
-
-          // Save the data
-          await this.dataStorage.setFindAGraveMemorialData(memorial.memorialId, memorial.data);
-          this.onMemorialDataUpdate?.(memorial.memorialId, memorial.data);
-          memorial.isProcessing = false;
-          this.onMemorialUpdateEnd?.(memorial.memorialId);
-        }
+        await this.processPersonBatchFromQueue(Array.from(this.personQueue)
+          .slice(0, FindAGraveMemorialUpdater.MAX_PERSON_BATCH_SIZE)
+          .map(id => this.memorials.get(id)!));
       }
     } finally {
       this.isProcessingPersonQueue = false;
@@ -231,6 +203,35 @@ export class FindAGraveMemorialUpdater {
     // There may be new items in the queue after processing, so
     // trigger again
     this.processPersonQueue();
+  }
+
+  private async processPersonBatchFromQueue(memorialBatch: Memorial[]) {
+    const memorialsByRecordId = new Map<string, Memorial>();
+    for (const memorial of memorialBatch) {
+      memorialsByRecordId.set(memorial.data.recordId!, memorial);
+    }
+
+    // Update each memorial with its person ID result
+    Logger.debug(`Looking up person IDs for ${memorialBatch.length} memorials`, memorialBatch);
+    const personMap = await this.authenticatedFsApiClient.getPersonsForRecords(Array.from(memorialsByRecordId.keys()));
+    for (const memorial of memorialBatch) {
+      const recordId = memorial.data.recordId!;
+      const personId = personMap[recordId];
+
+      if (personId) {
+        memorial.data.personId = personId;
+        memorial.data.personIdStatus = IdStatus.FOUND;
+      } else {
+        memorial.data.personId = undefined;
+        memorial.data.personIdStatus = IdStatus.NONE;
+      }
+
+      // Save the data
+      await this.dataStorage.setFindAGraveMemorialData(memorial.memorialId, memorial.data);
+      this.onMemorialDataUpdate?.(memorial.memorialId, memorial.data);
+      memorial.isProcessing = false;
+      this.onMemorialUpdateEnd?.(memorial.memorialId);
+    }
   }
 
   private async forceProcessMemorial(memorialId: string): Promise<void> {
