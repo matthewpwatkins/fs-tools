@@ -13,8 +13,7 @@ export interface Memorial {
 }
 
 export class FindAGraveMemorialUpdater {
-  private static readonly MIN_PERSON_BATCH_SIZE = 10;
-  private static readonly MAX_PERSON_BATCH_SIZE = 50;
+  private static readonly PERSON_BATCH_SIZE = 100;
 
   // Callbacks
   public onMemorialUpdateStart?: ((memorialId: string) => void);
@@ -120,7 +119,7 @@ export class FindAGraveMemorialUpdater {
         this.onMemorialDataUpdate?.(memorial.memorialId, memorial.data);
       } catch (err) {
         Logger.error(`Error looking up record ID for memorial ${memorial.memorialId}`, err);
-        memorial.data.recordIdStatus = IdStatus.NONE;
+        memorial.data.recordIdStatus = IdStatus.UNKNOWN;
         memorial.data.recordId = undefined;
         await this.dataStorage.setFindAGraveMemorialData(memorial.memorialId, memorial.data);
       } finally {
@@ -198,7 +197,7 @@ export class FindAGraveMemorialUpdater {
       return;
     }
     
-    const minBatchSize = minBatchSizeOverride || FindAGraveMemorialUpdater.MIN_PERSON_BATCH_SIZE;
+    const minBatchSize = minBatchSizeOverride || FindAGraveMemorialUpdater.PERSON_BATCH_SIZE;
     if (this.personQueue.size && this.personQueue.size < minBatchSize) {
       // Not enough items in the queue to process. Check again later
       if (!this.personQueueProcessingTimeout) {
@@ -213,7 +212,7 @@ export class FindAGraveMemorialUpdater {
     try {
       while (this.personQueue.size) {
         await this.processPersonBatchFromQueue(Array.from(this.personQueue)
-          .slice(0, FindAGraveMemorialUpdater.MAX_PERSON_BATCH_SIZE)
+          .slice(0, FindAGraveMemorialUpdater.PERSON_BATCH_SIZE)
           .map(id => this.memorials.get(id)!));
       }
     } finally {
@@ -234,6 +233,7 @@ export class FindAGraveMemorialUpdater {
 
     // Update each memorial with its person ID result
     Logger.debug(`Looking up person IDs for ${memorialBatch.length} memorials`, memorialBatch);
+    const processingStart = Date.now();
     const personMap = await this.authenticatedFsApiClient.getPersonsForRecords(Array.from(memorialsByRecordId.keys()));
     for (const memorial of memorialBatch) {
       const recordId = memorial.data.recordId!;
@@ -248,10 +248,17 @@ export class FindAGraveMemorialUpdater {
       }
 
       // Save the data
-      memorial.isProcessing = false;
       await this.dataStorage.setFindAGraveMemorialData(memorial.memorialId, memorial.data);
-      this.personQueue.delete(memorial.memorialId);
       this.onMemorialDataUpdate?.(memorial.memorialId, memorial.data);
+    }
+    const processingEnd = Date.now();
+    const processingTimeDelayMs = Math.max(0, this.maxPersonBatchIntervalMs - (processingEnd - processingStart));
+    if (processingTimeDelayMs > 0) {
+      await new Promise(resolve => setTimeout(resolve, processingTimeDelayMs));
+    }
+    for (const memorial of memorialBatch) {
+      memorial.isProcessing = false;
+      this.personQueue.delete(memorial.memorialId);
       this.onMemorialUpdateEnd?.(memorial.memorialId);
     }
   }
