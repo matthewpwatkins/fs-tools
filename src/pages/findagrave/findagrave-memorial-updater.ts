@@ -24,7 +24,7 @@ export class FindAGraveMemorialUpdater {
   private readonly dataStorage: DataStorage;
   private readonly anonymousFsApiClient: AnonymousApiClient;
   private readonly authenticatedFsApiClient: AuthenticatedApiClient;
-  private readonly minProcessingTimeMs: number;
+  private readonly minRecordProcessingTimeMs: number;
   private readonly isAuthenticated: boolean;
 
   private readonly memorials = new Map<string, Memorial>();
@@ -43,7 +43,7 @@ export class FindAGraveMemorialUpdater {
     this.dataStorage = dataStorage;
     this.anonymousFsApiClient = anonymousFsApiClient;
     this.authenticatedFsApiClient = authenticatedFsApiClient;
-    this.minProcessingTimeMs = minProcessingTimeMs;
+    this.minRecordProcessingTimeMs = minProcessingTimeMs;
     this.isAuthenticated = !!this.dataStorage.getAuthenticatedSession();
   }
 
@@ -110,6 +110,7 @@ export class FindAGraveMemorialUpdater {
     Logger.debug(`Processing record for memorial ${memorial.memorialId}`, memorial);
 
     if (memorial.data.recordIdStatus === IdStatus.UNKNOWN) {
+      const processingStart = Date.now();
       memorial.isProcessing = true;
       this.onMemorialUpdateStart?.(memorial.memorialId);
       try {
@@ -121,9 +122,14 @@ export class FindAGraveMemorialUpdater {
         memorial.data.recordId = undefined;
         await this.dataStorage.setFindAGraveMemorialData(memorial.memorialId, memorial.data);
       } finally {
+        const processingEnd = Date.now();
         memorial.isProcessing = false;
         this.onMemorialDataUpdate?.(memorial.memorialId, memorial.data);
         this.onMemorialUpdateEnd?.(memorial.memorialId);
+        const processingTimeDelay = Math.max(0, this.minRecordProcessingTimeMs - (processingEnd - processingStart));
+        if (processingTimeDelay > 0) {
+          await new Promise(resolve => setTimeout(resolve, processingTimeDelay));
+        }
       }
     }
 
