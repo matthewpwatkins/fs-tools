@@ -171,12 +171,15 @@ export class FindAGraveMemorialUpdater {
 
   private queueForPersonLookup(memorial: Memorial): void {
     if (memorial.data.recordIdStatus !== IdStatus.FOUND) {
+      Logger.debug(`Record ID not found for memorial ${memorial.memorialId}`);
       return;
     }
-    if (memorial.data.personIdStatus !== IdStatus.NONE) {
+    if (memorial.data.personIdStatus !== IdStatus.UNKNOWN) {
+      Logger.debug(`Person ID status already set for memorial ${memorial.memorialId}`);
       return;
     }
     if (!this.isAuthenticated) {
+      Logger.debug(`Not authenticated. Cannot look up person ID for memorial ${memorial.memorialId}`);
       return;
     }
     if (!this.personQueue.has(memorial.memorialId)) {
@@ -198,12 +201,14 @@ export class FindAGraveMemorialUpdater {
     if (this.personQueue.size && this.personQueue.size < minBatchSize) {
       // Not enough items in the queue to process. Check again later
       if (!this.personQueueProcessingTimeout) {
+        Logger.debug(`Not enough items in the person queue to process. Waiting for ${this.maxPersonBatchIntervalMs}ms`);
         this.personQueueProcessingTimeout = setTimeout(() => this.processPersonQueue(1), this.maxPersonBatchIntervalMs);
       }
       return;
     }
     
     this.isProcessingPersonQueue = true;
+    Logger.debug(`Processing person queue, size=${this.personQueue.size}`);
     try {
       while (this.personQueue.size) {
         await this.processPersonBatchFromQueue(Array.from(this.personQueue)
@@ -222,6 +227,7 @@ export class FindAGraveMemorialUpdater {
   private async processPersonBatchFromQueue(memorialBatch: Memorial[]) {
     const memorialsByRecordId = new Map<string, Memorial>();
     for (const memorial of memorialBatch) {
+      this.onMemorialUpdateStart?.(memorial.memorialId);
       memorialsByRecordId.set(memorial.data.recordId!, memorial);
     }
 
@@ -241,9 +247,10 @@ export class FindAGraveMemorialUpdater {
       }
 
       // Save the data
-      await this.dataStorage.setFindAGraveMemorialData(memorial.memorialId, memorial.data);
-      this.onMemorialDataUpdate?.(memorial.memorialId, memorial.data);
       memorial.isProcessing = false;
+      await this.dataStorage.setFindAGraveMemorialData(memorial.memorialId, memorial.data);
+      this.personQueue.delete(memorial.memorialId);
+      this.onMemorialDataUpdate?.(memorial.memorialId, memorial.data);
       this.onMemorialUpdateEnd?.(memorial.memorialId);
     }
   }
