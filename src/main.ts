@@ -36,7 +36,7 @@ async function main() {
   const findAGraveMemorialUpdater = new FindAGraveMemorialUpdater(
     dataStorage,
     authenticatedClient,
-    10_000 // allow 10 seconds between person queue requests
+    10_000 // allow 10 seconds between forced person queue requests
   );
 
   const ALL_PAGES: Page[] = [

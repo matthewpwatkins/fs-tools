@@ -257,8 +257,7 @@ export class FindAGraveMemorialUpdater {
   }
 
   private async forceProcessMemorial(memorialId: string): Promise<void> {
-    const memorial = this.memorials.get(memorialId);
-    if (!memorial) return;
+    const memorial = this.memorials.get(memorialId)!;
 
     // Mark as processing
     memorial.isProcessing = true;
@@ -283,18 +282,14 @@ export class FindAGraveMemorialUpdater {
 
   private async lookupPersonId(memorial: Memorial): Promise<void> {
     try {
-      if (!await this.dataStorage.getAuthenticatedSession()) return;
+      if (!await this.dataStorage.getAuthenticatedSession()) {
+        return;
+      }
 
       Logger.debug(`Looking up person ID for memorial ${memorial.memorialId}`, memorial);
-      const attachments = await this.authenticatedFsApiClient.getAttachmentsForRecord(memorial.data.recordId!);
-      if (attachments && attachments.length > 0 && attachments[0].persons?.length > 0) {
-        const personId = attachments[0].persons[0].entityId;
-        memorial.data.personId = personId;
-        memorial.data.personIdStatus = IdStatus.FOUND;
-      } else {
-        memorial.data.personId = undefined;
-        memorial.data.personIdStatus = IdStatus.NONE;
-      }
+      const personMap = await this.authenticatedFsApiClient.getPersonsForRecords([memorial.data.recordId!]);
+      memorial.data.personId = personMap[memorial.data.recordId!];
+      memorial.data.personIdStatus = memorial.data.personId ? IdStatus.FOUND : IdStatus.NONE;
       await this.dataStorage.setFindAGraveMemorialData(memorial.memorialId, memorial.data);
     } catch (error) {
       Logger.error(`Error looking up person ID for memorial ${memorial.memorialId}`, error);

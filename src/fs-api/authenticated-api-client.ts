@@ -5,6 +5,8 @@ import { SourceAttachment } from "./models/source-attachment";
 import { API_BASE_URL, WEB_BASE_URL, GEDCOMX_JSON_TYPE } from "../constants";
 import { Logger } from "../util/logger";
 import { SearchRecordsResponse } from "./models/search-records-response";
+import { BulkSourceAttachmentsRequest } from "./models/bulk-source-attachments-request";
+import { BulkSourceAttachmentsResponse } from "./models/bulk-source-attachments-response";
 
 export class AuthenticatedApiClient {
   private static readonly THROTTLE_TIME_MS = 1_000;
@@ -42,14 +44,24 @@ export class AuthenticatedApiClient {
   
   public async getPersonsForRecords(recordIds: string[]): Promise<Record<string, string>> {
     if (recordIds.length === 0) return {};
-    
-    return this.executeAuthenticatedRequest<Record<string, string>>({
+
+    const request: BulkSourceAttachmentsRequest = {
+      uris: recordIds.map(recordId => `https://www.familysearch.org/ark:/61903/1:1:${recordId}`),
+    };
+
+    const response = await this.executeAuthenticatedRequest<BulkSourceAttachmentsResponse>({
       baseUrl: WEB_BASE_URL,
-      path: '/match/resolutions/match/bulk',
-      queryStringParams: new URLSearchParams({
-        'ids': recordIds.join(',')
-      })
+      path: '/service/tree/links/sources/attachments',
+      body: request,
     });
+
+    const personMap: Record<string, string> = {};
+    for (const key in response.attachedSourcesMap) {
+      const recordId = key.split(':').pop()!;
+      const personId = response.attachedSourcesMap[key][0].persons[0].entityId;
+      personMap[recordId] = personId;
+    }
+    return personMap;
   }
   
   public async getArk(ark: string): Promise<GedcomX> {
