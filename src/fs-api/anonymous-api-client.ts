@@ -9,7 +9,7 @@ import { Logger } from "../util/logger";
 export class AnonymousApiClient {
   private static readonly RETRY_ERROR_STATUSES = new Set<number>([401, 403, 429]);
   private static readonly ANONYMOUS_REFRESH_TIME_THRESHOLD_MS = 1000 * 60 * 5;
-  private static readonly THROTTLE_TIME_MS = 200;
+  private static readonly THROTTLE_TIME_MS = 1_000;
   private static readonly DEFAULT_IP_ADDRESS = '216.49.186.122';
   private static readonly CLIENT_ID = 'a02f100000TnN56AAF';
 
@@ -73,14 +73,14 @@ export class AnonymousApiClient {
     props.headers = props.headers || {};
     props.headers['Authorization'] = `Bearer ${session!.sessionId}`;
 
-    const response = await this.requestExecutor.executeRequest<T>(props);
+    const response = await this.requestExecutor.executeRequestWithMinResponseTime<T>(props, AnonymousApiClient.THROTTLE_TIME_MS);
 
     if (allowRetry && this.shouldRetry(response)) {
       return this.executeRequest(props, true, false);
     }
 
     response.throwIfNotOk();
-    return await this.requestWithThrottling<T>(response);
+    return response.data!;
   }
 
   private shouldRetry<T>(response: ApiResponse<T>) {
@@ -104,9 +104,5 @@ export class AnonymousApiClient {
     return false;
   }
 
-  private requestWithThrottling<T>(response: ApiResponse<T>): T | Promise<T> {
-    return new Promise<T>((resolve) => setTimeout(() => {
-      resolve(response.data!);
-    }, AnonymousApiClient.THROTTLE_TIME_MS));
-  }
+  
 }

@@ -7,7 +7,7 @@ import { Logger } from "../util/logger";
 import { SearchRecordsResponse } from "./models/search-records-response";
 
 export class AuthenticatedApiClient {
-  private static readonly THROTTLE_TIME_MS = 500;
+  private static readonly THROTTLE_TIME_MS = 1_000;
 
   private requestExecutor: RequestExecutor;
   private dataStorage: DataStorage;
@@ -85,16 +85,17 @@ export class AuthenticatedApiClient {
     const session = await this.getAuthenticatedSession();
 
     try {
-      const response = await this.requestExecutor.executeRequest<T>({
+      const response = await this.requestExecutor.executeRequestWithMinResponseTime<T>({
         ...requestParams,
         headers: {
           ...requestParams.headers || {},
           'Authorization': `Bearer ${session.sessionId}`,
         }
-      });
+      }, AuthenticatedApiClient.THROTTLE_TIME_MS);
 
       response.throwIfNotOk();
-      return await this.requestWithThrottling(response);
+      // Return data immediately without throttling
+      return response.data!;
     } catch (error) {
       // Clear session ID if authentication failed
       if (error instanceof Error && (error.message.includes('status 401') || error.message.includes('status 403'))) {
@@ -105,11 +106,7 @@ export class AuthenticatedApiClient {
     }
   }
 
-  private requestWithThrottling<T>(response: ApiResponse<T>): T | Promise<T> {
-    return new Promise<T>((resolve) => setTimeout(() => {
-      resolve(response.data!);
-    }, AuthenticatedApiClient.THROTTLE_TIME_MS));
-  }
+  
 
   // #endregion
 }

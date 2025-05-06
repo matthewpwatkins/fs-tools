@@ -23,6 +23,19 @@ export interface ApiResponse<T> {
 export class RequestExecutor {
   private static readonly REQUEST_TIMEOUT_MS = 60_000;
 
+  public async executeRequestWithMinResponseTime<T>(props: RequestProps, minResponseTimeMs: number): Promise<ApiResponse<T>> {
+    const startTime = Date.now();
+    const response = await this.executeRequest<T>(props);
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+
+    if (duration < minResponseTimeMs) {
+      await new Promise(resolve => setTimeout(resolve, minResponseTimeMs - duration));
+    }
+
+    return response;
+  }
+
   public async executeRequest<T>(props: RequestProps): Promise<ApiResponse<T>> {    
     const baseHeaders: Record<string, string> = {
       'Accept': 'application/json, text/plain, */*',

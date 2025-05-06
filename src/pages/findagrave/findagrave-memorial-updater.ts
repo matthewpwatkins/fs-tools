@@ -1,6 +1,5 @@
 import { DataStorage } from "../../data/data-storage";
 import { FindAGraveMemorialData, IdStatus } from "../../data/models/findagrave-memorial-data";
-import { AnonymousApiClient } from "../../fs-api/anonymous-api-client";
 import { AuthenticatedApiClient } from "../../fs-api/authenticated-api-client";
 import { Logger } from "../../util/logger";
 import { FINDAGRAVE_COLLECTION_ID } from "../../constants";
@@ -22,7 +21,6 @@ export class FindAGraveMemorialUpdater {
 
   private readonly dataStorage: DataStorage;
   private readonly authenticatedFsApiClient: AuthenticatedApiClient;
-  private readonly minRecordProcessingTimeMs: number;
   private readonly maxPersonBatchIntervalMs: number;
 
   private readonly memorials = new Map<string, Memorial>();
@@ -36,12 +34,10 @@ export class FindAGraveMemorialUpdater {
   constructor(
     dataStorage: DataStorage,
     authenticatedFsApiClient: AuthenticatedApiClient,
-    minRecordProcessingTimeMs: number,
     maxPersonBatchIntervalMs: number
   ) {
     this.dataStorage = dataStorage;
     this.authenticatedFsApiClient = authenticatedFsApiClient;
-    this.minRecordProcessingTimeMs = minRecordProcessingTimeMs;
     this.maxPersonBatchIntervalMs = maxPersonBatchIntervalMs;
   }
 
@@ -108,7 +104,6 @@ export class FindAGraveMemorialUpdater {
     Logger.debug(`Processing record for memorial ${memorial.memorialId}`, memorial);
 
     if (memorial.data.recordIdStatus === IdStatus.UNKNOWN) {
-      const processingStart = Date.now();
       memorial.isProcessing = true;
       this.onMemorialUpdateStart?.(memorial.memorialId);
       try {
@@ -120,14 +115,9 @@ export class FindAGraveMemorialUpdater {
         memorial.data.recordId = undefined;
         await this.dataStorage.setFindAGraveMemorialData(memorial.memorialId, memorial.data);
       } finally {
-        const processingEnd = Date.now();
         memorial.isProcessing = false;
         this.onMemorialDataUpdate?.(memorial.memorialId, memorial.data);
         this.onMemorialUpdateEnd?.(memorial.memorialId);
-        const processingTimeDelayMs = Math.max(0, this.minRecordProcessingTimeMs - (processingEnd - processingStart));
-        if (processingTimeDelayMs > 0) {
-          await new Promise(resolve => setTimeout(resolve, processingTimeDelayMs));
-        }
       }
     }
 
@@ -172,6 +162,7 @@ export class FindAGraveMemorialUpdater {
       return;
     }
     if (!this.personQueue.has(memorial.memorialId)) {
+      Logger.debug(`Adding memorial ${memorial.memorialId} to the person queue`);
       this.personQueue.add(memorial.memorialId);
       this.processPersonQueue();
     }
@@ -179,10 +170,12 @@ export class FindAGraveMemorialUpdater {
 
   private async processPersonQueue(minBatchSizeOverride?: number): Promise<void> {
     if (this.isProcessingPersonQueue) {
+      Logger.debug(`Already processing person queue`);
       return;
     }
 
     if (this.personQueue.size === 0) {
+      Logger.debug(`Person queue is empty. No need to process`);
       return;
     }
 
@@ -193,12 +186,18 @@ export class FindAGraveMemorialUpdater {
       return;
     }
     
-    const minBatchSize = minBatchSizeOverride || FindAGraveMemorialUpdater.PERSON_BATCH_SIZE;
-    if (this.personQueue.size && this.personQueue.size < minBatchSize) {
-      // Not enough items in the queue to process. Check again later
-      if (!this.personQueueProcessingTimeout) {
-        Logger.debug(`Not enough items in the person queue to process. Waiting for ${this.maxPersonBatchIntervalMs}ms`);
-        this.personQueueProcessingTimeout = setTimeout(() => this.processPersonQueue(1), this.maxPersonBatchIntervalMs);
+    const minFirstBatchSize = minBatchSizeOverride || FindAGraveMemorialUpdater.PERSON_BATCH_SIZE;
+    if (this.personQueue.size && this.personQueue.size < minFirstBatchSize) {
+      Logger.debug(`Not enough items in the person queue to process. Size=${this.personQueue.size}, minBatchSize=${minFirstBatchSize}`);
+      if (this.personQueueProcessingTimeout) {
+        Logger.debug(`There is already a timeout set to process the person queue. Not setting another one`);
+      } else {
+        Logger.debug(`Person queue is not in progress but we still want to eventually process these ${this.personQueue.size} items. Setting a timer to try again with min batch size of 1 in ${this.maxPersonBatchIntervalMs}ms`);
+        this.personQueueProcessingTimeout = setTimeout(async () => {
+          this.personQueueProcessingTimeout = undefined;
+          Logger.debug(`Timeout expired. Processing person queue with min batch size of 1`);
+          await this.processPersonQueue(1);
+        }, this.maxPersonBatchIntervalMs);
       }
       return;
     }
@@ -206,17 +205,20 @@ export class FindAGraveMemorialUpdater {
     this.isProcessingPersonQueue = true;
     Logger.debug(`Processing person queue, size=${this.personQueue.size}`);
     try {
-      while (this.personQueue.size) {
+      let minBatchSize = minFirstBatchSize;
+      while (this.personQueue.size >= minFirstBatchSize) {
         await this.processPersonBatchFromQueue(Array.from(this.personQueue)
           .slice(0, FindAGraveMemorialUpdater.PERSON_BATCH_SIZE)
           .map(id => this.memorials.get(id)!));
+        // The first batch may have been smaller, but don't process again if we have less than the standard minimum batch size
+        minBatchSize = FindAGraveMemorialUpdater.PERSON_BATCH_SIZE;
       }
     } finally {
       this.isProcessingPersonQueue = false;
     }
 
-    // There may be new items in the queue after processing, so
-    // trigger again
+    // There may be leftover items in the queue that are less than the batch size
+    // So set the timeout to process them
     this.processPersonQueue();
   }
 
@@ -229,7 +231,6 @@ export class FindAGraveMemorialUpdater {
 
     // Update each memorial with its person ID result
     Logger.debug(`Looking up person IDs for ${memorialBatch.length} memorials`, memorialBatch);
-    const processingStart = Date.now();
     const personMap = await this.authenticatedFsApiClient.getPersonsForRecords(Array.from(memorialsByRecordId.keys()));
     for (const memorial of memorialBatch) {
       const recordId = memorial.data.recordId!;
@@ -247,11 +248,7 @@ export class FindAGraveMemorialUpdater {
       await this.dataStorage.setFindAGraveMemorialData(memorial.memorialId, memorial.data);
       this.onMemorialDataUpdate?.(memorial.memorialId, memorial.data);
     }
-    const processingEnd = Date.now();
-    const processingTimeDelayMs = Math.max(0, this.maxPersonBatchIntervalMs - (processingEnd - processingStart));
-    if (processingTimeDelayMs > 0) {
-      await new Promise(resolve => setTimeout(resolve, processingTimeDelayMs));
-    }
+    
     for (const memorial of memorialBatch) {
       memorial.isProcessing = false;
       this.personQueue.delete(memorial.memorialId);

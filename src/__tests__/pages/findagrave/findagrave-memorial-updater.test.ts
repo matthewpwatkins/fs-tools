@@ -44,8 +44,7 @@ describe('FindAGraveMemorialUpdater', () => {
     updater = new FindAGraveMemorialUpdater(
       mockDataStorage,
       mockAuthenticatedApiClient,
-      0, // No delay for tests
-      1
+      0
     );
     
     // Mock Date.now to control timing
