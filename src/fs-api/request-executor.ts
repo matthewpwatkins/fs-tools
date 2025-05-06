@@ -21,7 +21,7 @@ export interface ApiResponse<T> {
 }
 
 export class RequestExecutor {
-  private static readonly REQUEST_TIMEOUT_MS = 10_000;
+  private static readonly REQUEST_TIMEOUT_MS = 60_000;
 
   public async executeRequest<T>(props: RequestProps): Promise<ApiResponse<T>> {    
     const baseHeaders: Record<string, string> = {

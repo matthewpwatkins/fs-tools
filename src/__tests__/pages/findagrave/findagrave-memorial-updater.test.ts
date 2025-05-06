@@ -43,7 +43,6 @@ describe('FindAGraveMemorialUpdater', () => {
     // Create the updater with mocks and zero minimum processing time
     updater = new FindAGraveMemorialUpdater(
       mockDataStorage,
-      mockAnonymousApiClient,
       mockAuthenticatedApiClient,
       0, // No delay for tests
       1

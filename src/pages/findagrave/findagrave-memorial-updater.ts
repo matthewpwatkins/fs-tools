@@ -21,7 +21,6 @@ export class FindAGraveMemorialUpdater {
   public onMemorialUpdateEnd?: ((memorialId: string) => void);
 
   private readonly dataStorage: DataStorage;
-  private readonly anonymousFsApiClient: AnonymousApiClient;
   private readonly authenticatedFsApiClient: AuthenticatedApiClient;
   private readonly minRecordProcessingTimeMs: number;
   private readonly maxPersonBatchIntervalMs: number;
@@ -36,13 +35,11 @@ export class FindAGraveMemorialUpdater {
 
   constructor(
     dataStorage: DataStorage,
-    anonymousFsApiClient: AnonymousApiClient,
     authenticatedFsApiClient: AuthenticatedApiClient,
     minRecordProcessingTimeMs: number,
     maxPersonBatchIntervalMs: number
   ) {
     this.dataStorage = dataStorage;
-    this.anonymousFsApiClient = anonymousFsApiClient;
     this.authenticatedFsApiClient = authenticatedFsApiClient;
     this.minRecordProcessingTimeMs = minRecordProcessingTimeMs;
     this.maxPersonBatchIntervalMs = maxPersonBatchIntervalMs;
@@ -140,14 +137,13 @@ export class FindAGraveMemorialUpdater {
   private async lookupRecordId(memorial: Memorial): Promise<void> {
     Logger.debug(`Looking up record ID for memorial ${memorial.memorialId}`, memorial);
     try {
-      const searchRecordsResponse = await this.anonymousFsApiClient.searchRecords(new URLSearchParams({
+      const searchRecordsResponse = await this.authenticatedFsApiClient.searchRecords(new URLSearchParams({
         'q.externalRecordId': memorial.memorialId,
         'f.collectionId': FINDAGRAVE_COLLECTION_ID
       }));
 
       const recordsCount = searchRecordsResponse?.entries?.length || 0;
       if (recordsCount > 1) {
-        await this.anonymousFsApiClient.fetchNewAnonymousSessionId();
         throw new Error('Search returned multiple records. This is likely because we hit the API too fast. Take a break for a few minutes and refresh the page');
       }
 

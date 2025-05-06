@@ -34,8 +34,7 @@ async function main() {
   await IpAddressManager.checkAndUpdateIpAddress(dataStorage);
 
   const findAGraveMemorialUpdater = new FindAGraveMemorialUpdater(
-    dataStorage, 
-    anonymousClient, 
+    dataStorage,
     authenticatedClient,
     500, // Explicit 500ms minimum record processing time
     10_000 // Explicit 10s max person batch interval
@@ -133,8 +132,10 @@ async function main() {
     const anyPagesToastable = matchingPagesArray.some(page => page.requiresAuthenticatedSession());
     if (anyPagesToastable) {
       if (updatedSession) {
+        Logger.debug('Authenticated session changed. Hiding toast.');
         Toast.hide();
       } else {
+        Logger.debug('Authenticated session changed. Showing toast.');
         Toast.show({
           title: 'Authentication Required',
           message: 'Some FS Tools functionality may be limited on this page because you are not logged into FamilySearch on this browser. Click here to log in to FamilySearch. Then refresh this page.',
