@@ -9,7 +9,7 @@ import { BulkSourceAttachmentsRequest } from "./models/bulk-source-attachments-r
 import { BulkSourceAttachmentsResponse } from "./models/bulk-source-attachments-response";
 
 export class AuthenticatedApiClient {
-  private static readonly THROTTLE_TIME_MS = 1_000;
+  private static readonly THROTTLE_TIME_MS = 2_000;
 
   private requestExecutor: RequestExecutor;
   private dataStorage: DataStorage;
