@@ -9,7 +9,7 @@ This is a Chrome / Edge extension that adds extra functionality to make it easie
 Install the extension from your browser's extension or add-on list:
 
 - [Chrome](https://chromewebstore.google.com/detail/fs-tools/mdkonnbiomkkmccchabmcjgocnbpokah)
-- Edge (use the Chrome link)
+- [Edge](https://microsoftedge.microsoft.com/addons/detail/poihonjhkckkjailmbjocmlldbagdagl)
 - Brave (use the Chrome link)
 - DuckDuckGo (use the Chrome link)
 - Opera (use the Chrome link)
