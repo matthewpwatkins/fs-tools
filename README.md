@@ -8,11 +8,8 @@ This is a Chrome / Edge extension that adds extra functionality to make it easie
 
 Install the extension from your browser's extension or add-on list:
 
-- [Chrome](https://chromewebstore.google.com/detail/fs-tools/mdkonnbiomkkmccchabmcjgocnbpokah)
+- [Chrome](https://chromewebstore.google.com/detail/fs-tools/mdkonnbiomkkmccchabmcjgocnbpokah) (and Brave, Opera, DuckDuckGo, etc)
 - [Edge](https://microsoftedge.microsoft.com/addons/detail/poihonjhkckkjailmbjocmlldbagdagl)
-- Brave (use the Chrome link)
-- DuckDuckGo (use the Chrome link)
-- Opera (use the Chrome link)
 - Firefox (coming soon)
 - Safari (coming soon)
 
